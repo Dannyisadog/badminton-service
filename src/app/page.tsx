@@ -17,19 +17,16 @@ export default function SessionPage() {
   const { isReady, profile, getAccessToken, error: liffError } = useLiff()
   const [sessionData, setSessionData] = useState<SessionData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState(false)
+  const [loadingAction, setLoadingAction] = useState<string | null>(null)
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const myStatus: PlayerStatus | null = sessionData
     ? (() => {
         const id = profile?.userId
-        const inRoster = sessionData.roster.find((p) => p.line_user_id === id)
-        const inAbsent = sessionData.absent.find((p) => p.line_user_id === id)
-        const inWaitlist = sessionData.waitlist.find((p) => p.line_user_id === id)
-        if (inRoster) return 'roster'
-        if (inAbsent) return 'absent'
-        if (inWaitlist) return 'waitlist'
+        if (sessionData.roster.find((p) => p.line_user_id === id)) return 'roster'
+        if (sessionData.absent.find((p) => p.line_user_id === id)) return 'absent'
+        if (sessionData.waitlist.find((p) => p.line_user_id === id)) return 'waitlist'
         return null
       })()
     : null
@@ -58,16 +55,16 @@ export default function SessionPage() {
   }, [isReady, fetchSession])
 
   const callApi = async (endpoint: string) => {
-    const idToken = getAccessToken()
-    if (!idToken || !sessionData) return
-    setActionLoading(true)
+    const accessToken = getAccessToken()
+    if (!accessToken || !sessionData) return
+    setLoadingAction(endpoint)
     setMessage(null)
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ session_id: sessionData.session.id }),
       })
@@ -78,7 +75,7 @@ export default function SessionPage() {
     } catch (err) {
       setMessage({ text: err instanceof Error ? err.message : 'Error', type: 'error' })
     } finally {
-      setActionLoading(false)
+      setLoadingAction(null)
     }
   }
 
@@ -122,6 +119,19 @@ export default function SessionPage() {
     weekday: 'long',
   })
 
+  const isLoading = loadingAction !== null
+
+  const redAction =
+    myStatus === 'absent' ? '/api/cancel-absent' :
+    myStatus === 'waitlist' ? '/api/leave' :
+    myStatus === 'roster' ? '/api/leave' :
+    '/api/absent'
+  const redLabel =
+    myStatus === 'absent' ? '取消請假' :
+    myStatus === 'waitlist' ? '取消候補' :
+    myStatus === 'roster' ? '取消代打' :
+    '請假'
+
   return (
     <div className="container">
       {/* Session Info */}
@@ -138,9 +148,10 @@ export default function SessionPage() {
             session.location
           )}
         </div>
-        <div className="meta-row">🕗 {session.start_time.slice(0, 5)}{session.end_time ? ` ~ ${session.end_time.slice(0, 5)}` : ''}</div>
-
-        <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+        <div className="meta-row">
+          🕗 {session.start_time.slice(0, 5)}{session.end_time ? ` ~ ${session.end_time.slice(0, 5)}` : ''}
+        </div>
+        <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <span className="badge badge-green">出席 {regular_count - absent.length}/{regular_count}</span>
           {available_slots > 0 && (
             <span className="badge badge-red">請假 {absent.length} 人，可報名 {available_slots} 個</span>
@@ -174,38 +185,40 @@ export default function SessionPage() {
         <div className="actions">
           <button
             className="btn btn-green"
-            disabled={actionLoading || myStatus === 'roster' || available_slots === 0}
+            disabled={isLoading || myStatus !== null || available_slots === 0}
             onClick={() => callApi('/api/join')}
           >
+            {loadingAction === '/api/join' && <span className="spinner" />}
             {myStatus === 'roster' ? '已出席' : available_slots === 0 ? '名額已滿' : '加入出席'}
           </button>
+
           <button
             className="btn btn-red"
-            disabled={actionLoading || myStatus === 'absent'}
-            onClick={() => callApi(myStatus === 'absent' ? '/api/cancel-absent' : '/api/absent')}
+            disabled={isLoading}
+            onClick={() => callApi(redAction)}
           >
-            {myStatus === 'absent' ? '取消請假' : '請假'}
+            {loadingAction === redAction && <span className="spinner" />}
+            {redLabel}
           </button>
+
           <button
             className="btn btn-yellow"
-            disabled={
-              actionLoading ||
-              myStatus === 'waitlist' ||
-              myStatus === 'roster' ||
-              available_slots > 0
-            }
+            disabled={isLoading || myStatus !== null || available_slots > 0}
             onClick={() => callApi('/api/waitlist')}
           >
+            {loadingAction === '/api/waitlist' && <span className="spinner" />}
             {myStatus === 'waitlist' ? '已在候補名單' : '加入候補'}
           </button>
         </div>
       </div>
 
       {/* 請假名單 */}
-      {absent.length > 0 && (
-        <div className="card">
-          <p className="section-title">請假名單（{absent.length} 人）</p>
-          {absent.map((p, i) => (
+      <div className="card">
+        <p className="section-title">請假名單（{absent.length} 人）</p>
+        {absent.length === 0 ? (
+          <p className="empty">無人請假</p>
+        ) : (
+          absent.map((p, i) => (
             <div className="player-row" key={p.id}>
               <span style={{ fontSize: 14 }}>
                 {i + 1}. {p.name}
@@ -214,9 +227,9 @@ export default function SessionPage() {
                 )}
               </span>
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
 
       {/* 代打名單 */}
       {roster.length > 0 && (
@@ -236,10 +249,12 @@ export default function SessionPage() {
       )}
 
       {/* 候補名單 */}
-      {waitlist.length > 0 && (
-        <div className="card">
-          <p className="section-title">候補名單（{waitlist.length} 人）</p>
-          {waitlist.map((p, i) => (
+      <div className="card">
+        <p className="section-title">候補名單（{waitlist.length} 人）</p>
+        {waitlist.length === 0 ? (
+          <p className="empty">候補名單為空</p>
+        ) : (
+          waitlist.map((p, i) => (
             <div className="player-row" key={p.id}>
               <span style={{ fontSize: 14 }}>
                 #{i + 1} {p.name}
@@ -248,39 +263,35 @@ export default function SessionPage() {
                 )}
               </span>
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </div>
   )
 }
 
 function statusLabel(status: PlayerStatus): string {
-  const map: Record<PlayerStatus, string> = {
-    roster: '出席',
-    absent: '請假',
-    waitlist: '候補',
-  }
+  const map: Record<PlayerStatus, string> = { roster: '出席', absent: '請假', waitlist: '候補' }
   return map[status]
 }
 
 function statusBadge(status: PlayerStatus): string {
-  const map: Record<PlayerStatus, string> = {
-    roster: 'badge-green',
-    absent: 'badge-red',
-    waitlist: 'badge-yellow',
-  }
+  const map: Record<PlayerStatus, string> = { roster: 'badge-green', absent: 'badge-red', waitlist: 'badge-yellow' }
   return map[status]
 }
 
 function getSuccessMessage(endpoint: string, data: Record<string, unknown>): string {
   if (endpoint === '/api/join') {
-    return data.status === 'waitlist' ? `已加入候補名單（第 ${data.waitlistPosition ?? ''} 位）` : '成功加入出席！'
+    return data.status === 'waitlist' ? '已加入候補名單' : '成功加入出席！'
   }
-  if (endpoint === '/api/leave') {
+  if (endpoint === '/api/absent') {
     const promoted = data.promoted_player as { name: string } | null
-    return promoted ? `已請假，${promoted.name} 從候補晉升！` : '已成功請假'
+    return promoted ? `請假成功，${promoted.name} 從候補晉升！` : '請假成功'
   }
+  if (endpoint === '/api/cancel-absent') {
+    return (data.status as string) === 'waitlist' ? '取消請假，已加入候補名單' : '取消請假，歡迎回來！'
+  }
+  if (endpoint === '/api/leave') return '已取消'
   if (endpoint === '/api/waitlist') return '已加入候補名單'
   return '操作成功'
 }
