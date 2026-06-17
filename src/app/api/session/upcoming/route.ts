@@ -1,26 +1,13 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { getNextSessionDate } from '@/lib/schedule'
 
 export const dynamic = 'force-dynamic'
 
-// Returns the next upcoming Mon or Fri session.
+// Returns the next upcoming Mon or Fri session (Taiwan time).
 // Auto-creates the session if it doesn't exist yet.
 export async function GET() {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  // Find next Mon or Fri on or after today
-  const dayOfWeek = today.getDay() // 0=Sun, 1=Mon, ..., 5=Fri
-  const daysUntilMon = (1 - dayOfWeek + 7) % 7
-  const daysUntilFri = (5 - dayOfWeek + 7) % 7
-
-  const nextSessionOffset = Math.min(
-    daysUntilMon === 0 ? 0 : daysUntilMon,
-    daysUntilFri === 0 ? 0 : daysUntilFri
-  )
-  const nextDate = new Date(today)
-  nextDate.setDate(today.getDate() + nextSessionOffset)
-  const dateStr = nextDate.toISOString().split('T')[0]
+  const { dateStr, dayOfWeek: dayOfWeekStr } = getNextSessionDate()
 
   // Try to find existing session
   const { data: existing } = await supabaseAdmin
@@ -30,10 +17,6 @@ export async function GET() {
     .single()
 
   if (existing) return NextResponse.json(existing)
-
-  // Auto-create session for that date
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  const dayOfWeekStr = dayNames[nextDate.getDay()] === 'Mon' ? 'Mon' : 'Fri'
 
   const { data: created, error } = await supabaseAdmin
     .from('sessions')
