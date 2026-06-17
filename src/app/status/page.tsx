@@ -94,7 +94,7 @@ export default function StatusPage() {
   const dateObj = new Date(session.date + 'T00:00:00')
   const dateStr = dateObj.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'short' })
 
-  const currentList = activeTab === 'roster' ? roster : activeTab === 'absent' ? absent : waitlist
+  const currentList = activeTab === 'roster' ? roster : activeTab === 'absent' ? absent : [...returning, ...waitlist]
   const avatarColor = TAB_AVATAR_COLORS[activeTab]
 
   return (
@@ -120,7 +120,7 @@ export default function StatusPage() {
         <div className="badges" style={{ marginTop: 0 }}>
           <span className="badge badge-success">出席 {session.capacity - absent.length - returning.length + roster.length}/{session.capacity}</span>
           <span className="badge badge-danger">請假 {absent.length}</span>
-          <span className="badge badge-warning">候補 {waitlist.length}</span>
+          <span className="badge badge-warning">候補 {returning.length + waitlist.length}</span>
         </div>
       </div>
 
@@ -132,7 +132,7 @@ export default function StatusPage() {
             className={`tab ${activeTab === tab ? 'active' : ''}`}
             onClick={() => setActiveTab(tab)}
           >
-            {tab === 'roster' ? `出席 (${roster.length})` : tab === 'absent' ? `請假 (${absent.length})` : `候補 (${waitlist.length})`}
+            {tab === 'roster' ? `出席 (${roster.length})` : tab === 'absent' ? `請假 (${absent.length})` : `候補 (${returning.length + waitlist.length})`}
           </button>
         ))}
       </div>

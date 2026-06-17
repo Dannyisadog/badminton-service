@@ -443,23 +443,35 @@ export default function SessionPage() {
         </div>
       )}
 
-      {/* 候補名單 */}
+      {/* 候補名單 (returning regulars first, then waitlist substitutes) */}
       <div className="card">
         <p className="section-label">
-          候補名單 {waitlist.length > 0 && `· ${waitlist.length} 人`}
+          候補名單 {(returning.length + waitlist.length) > 0 && `· ${returning.length + waitlist.length} 人`}
         </p>
-        {waitlist.length === 0 ? (
+        {returning.length === 0 && waitlist.length === 0 ? (
           <p className="empty-state">候補名單為空</p>
         ) : (
-          waitlist.map((p, i) => (
-            <PlayerRow
-              key={p.id}
-              player={p}
-              isMe={p.line_user_id === profile?.userId}
-              color="warning"
-              rank={i + 1}
-            />
-          ))
+          <>
+            {returning.map((p, i) => (
+              <PlayerRow
+                key={p.id}
+                player={p}
+                isMe={p.line_user_id === profile?.userId}
+                color="warning"
+                rank={i + 1}
+                tag="正取"
+              />
+            ))}
+            {waitlist.map((p, i) => (
+              <PlayerRow
+                key={p.id}
+                player={p}
+                isMe={p.line_user_id === profile?.userId}
+                color="warning"
+                rank={returning.length + i + 1}
+              />
+            ))}
+          </>
         )}
       </div>
     </div>
@@ -471,11 +483,13 @@ function PlayerRow({
   isMe,
   color,
   rank,
+  tag,
 }: {
   player: PlayerWithStatus;
   isMe: boolean;
   color: "success" | "danger" | "warning";
   rank?: number;
+  tag?: string;
 }) {
   const initials = player.name.slice(0, 1).toUpperCase();
   return (
@@ -485,6 +499,7 @@ function PlayerRow({
         <span className="player-name">
           {player.name}
           {isMe && <span className="player-me">（我）</span>}
+          {tag && <span className="player-tag">{tag}</span>}
         </span>
       </div>
       {rank !== undefined && <span className="player-rank">#{rank}</span>}

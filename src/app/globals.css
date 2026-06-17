@@ -379,6 +379,16 @@ h2 {
   text-align: right;
 }
 
+.player-tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--warning-text, #92400e);
+  background: var(--warning-bg, #fef3c7);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 6px;
+}
+
 /* ============================================================
    Toast / message
    ============================================================ */
