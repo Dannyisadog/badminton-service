@@ -31,7 +31,25 @@ export async function POST(req: NextRequest) {
       const position = await getWaitlistPosition(session_id, existing.created_at)
       return NextResponse.json({ success: true, position })
     }
-    return NextResponse.json({ success: false, error: 'Already has status: ' + existing.status }, { status: 409 })
+    return NextResponse.json({ error: 'Already has status: ' + existing.status }, { status: 409 })
+  }
+
+  // Server-side slot check: if slots are available, use /api/join instead
+  const { count: absentCount } = await supabaseAdmin
+    .from('session_players')
+    .select('*', { count: 'exact', head: true })
+    .eq('session_id', session_id)
+    .eq('status', 'absent')
+
+  const { count: rosterCount } = await supabaseAdmin
+    .from('session_players')
+    .select('*', { count: 'exact', head: true })
+    .eq('session_id', session_id)
+    .eq('status', 'roster')
+
+  const openSlots = (absentCount ?? 0) - (rosterCount ?? 0)
+  if (openSlots > 0) {
+    return NextResponse.json({ error: 'Slots available, use /api/join instead' }, { status: 409 })
   }
 
   const { error: insertErr } = await supabaseAdmin

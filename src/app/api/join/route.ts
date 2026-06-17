@@ -31,7 +31,11 @@ export async function POST(req: NextRequest) {
     .eq('player_id', player.id)
     .single()
 
-  if (existing && existing.status !== 'absent') {
+  if (existing?.status === 'absent') {
+    return NextResponse.json({ error: 'Please cancel absence first' }, { status: 409 })
+  }
+
+  if (existing) {
     return NextResponse.json({ success: true, status: existing.status })
   }
 
