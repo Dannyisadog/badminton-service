@@ -177,6 +177,56 @@ export default function SessionPage() {
         </div>
       </div>
 
+      {/* 請假名單 */}
+      {absent.length > 0 && (
+        <div className="card">
+          <p className="section-title">請假名單（{absent.length} 人）</p>
+          {absent.map((p, i) => (
+            <div className="player-row" key={p.id}>
+              <span style={{ fontSize: 14 }}>
+                {i + 1}. {p.name}
+                {p.line_user_id === profile?.userId && (
+                  <span style={{ color: '#e53e3e', marginLeft: 6, fontSize: 12 }}>（我）</span>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 代打名單 */}
+      {roster.length > 0 && (
+        <div className="card">
+          <p className="section-title">代打名單（{roster.length} 人）</p>
+          {roster.map((p, i) => (
+            <div className="player-row" key={p.id}>
+              <span style={{ fontSize: 14 }}>
+                {i + 1}. {p.name}
+                {p.line_user_id === profile?.userId && (
+                  <span style={{ color: '#06c755', marginLeft: 6, fontSize: 12 }}>（我）</span>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 候補名單 */}
+      {waitlist.length > 0 && (
+        <div className="card">
+          <p className="section-title">候補名單（{waitlist.length} 人）</p>
+          {waitlist.map((p, i) => (
+            <div className="player-row" key={p.id}>
+              <span style={{ fontSize: 14 }}>
+                #{i + 1} {p.name}
+                {p.line_user_id === profile?.userId && (
+                  <span style={{ color: '#d97706', marginLeft: 6, fontSize: 12 }}>（我）</span>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
