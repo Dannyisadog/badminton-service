@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   const availableSlots = Math.max(0, (absentResult.count ?? 0) - (rosterResult.count ?? 0))
 
   if (groups.length > 0) {
-    const msg = buildAbsentNotification(player.name, promotedPlayer?.name ?? null, availableSlots)
+    const msg = buildAbsentNotification(player.name, promotedPlayer ?? null, availableSlots)
     notifyGroups(groups, msg).catch(console.error)
   }
 

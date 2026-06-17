@@ -3,14 +3,40 @@ import type { SessionStatus } from '@/types'
 
 const LINE_API = 'https://api.line.me/v2/bot'
 
-async function push(to: string, text: string): Promise<void> {
+interface Mentionee {
+  index: number
+  length: number
+  userId: string
+  type: 'user'
+}
+
+export interface LineMessage {
+  type: 'text'
+  text: string
+  mention?: { mentionees: Mentionee[] }
+}
+
+function buildMentionMessage(text: string, mentionTag: string, userId: string): LineMessage {
+  const index = text.indexOf(mentionTag)
+  if (index === -1) return { type: 'text', text }
+  return {
+    type: 'text',
+    text,
+    mention: {
+      mentionees: [{ index, length: mentionTag.length, userId, type: 'user' }],
+    },
+  }
+}
+
+async function push(to: string, message: LineMessage | string): Promise<void> {
+  const msg: LineMessage = typeof message === 'string' ? { type: 'text', text: message } : message
   const res = await fetch(`${LINE_API}/message/push`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
     },
-    body: JSON.stringify({ to, messages: [{ type: 'text', text }] }),
+    body: JSON.stringify({ to, messages: [msg] }),
   })
   if (!res.ok) {
     const body = await res.text()
@@ -58,16 +84,19 @@ export function buildSessionSummary(status: SessionStatus): string {
 
 export function buildAbsentNotification(
   leaverName: string,
-  promotedName: string | null,
+  promoted: { name: string; line_user_id: string } | null,
   availableSlots: number
-): string {
+): LineMessage {
   const lines = [`🔔 出席異動`, ``, `${leaverName} 請假`]
-  if (promotedName) {
-    lines.push(`✅ ${promotedName} 從候補遞補上來`)
-  } else if (availableSlots > 0) {
+  if (promoted) {
+    const mentionTag = `@${promoted.name}`
+    lines.push(`✅ ${mentionTag} 從候補遞補上來`)
+    return buildMentionMessage(withLink(lines), mentionTag, promoted.line_user_id)
+  }
+  if (availableSlots > 0) {
     lines.push(`還有 ${availableSlots} 個代打名額`)
   }
-  return withLink(lines)
+  return { type: 'text', text: withLink(lines) }
 }
 
 export function buildCancelAbsentNotification(
@@ -82,13 +111,17 @@ export function buildCancelAbsentNotification(
 
 export function buildLeaveNotification(
   leaverName: string,
-  promotedName: string | null,
+  promoted: { name: string; line_user_id: string } | null,
   availableSlots: number
-): string {
+): LineMessage {
   const lines = [`🔔 出席異動`, ``, `${leaverName} 取消代打`]
-  if (promotedName) lines.push(`✅ ${promotedName} 從候補遞補上來`)
-  else if (availableSlots > 0) lines.push(`還有 ${availableSlots} 個代打名額`)
-  return withLink(lines)
+  if (promoted) {
+    const mentionTag = `@${promoted.name}`
+    lines.push(`✅ ${mentionTag} 從候補遞補上來`)
+    return buildMentionMessage(withLink(lines), mentionTag, promoted.line_user_id)
+  }
+  if (availableSlots > 0) lines.push(`還有 ${availableSlots} 個代打名額`)
+  return { type: 'text', text: withLink(lines) }
 }
 
 export function buildJoinNotification(
@@ -108,7 +141,7 @@ export function buildPromotionNotification(playerName: string): string {
 
 export async function notifyGroups(
   groupIds: string[],
-  message: string
+  message: LineMessage | string
 ): Promise<void> {
   await Promise.all(groupIds.map((id) => push(id, message)))
 }
