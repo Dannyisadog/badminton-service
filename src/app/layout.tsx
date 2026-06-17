@@ -14,8 +14,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: `${APP_URL}/badminton.png`,
-        width: 1200,
-        height: 630,
+        width: 512,
+        height: 512,
         alt: '羽球場次管理',
       },
     ],
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     type: 'website',
   },
   twitter: {
-    card: 'summary_large_image',
+    card: 'summary',
     title: '羽球場次管理',
     description: '羽球場次出席、請假、候補管理系統',
     images: [`${APP_URL}/badminton.png`],
