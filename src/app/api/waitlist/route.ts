@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { verifyLineAccessToken, extractBearerToken } from '@/lib/auth'
+import { getOrCreatePlayer } from '@/lib/player'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,15 +9,15 @@ export async function POST(req: NextRequest) {
   const token = extractBearerToken(req.headers.get('Authorization'))
   if (!token) return NextResponse.json({ error: 'Missing token' }, { status: 401 })
 
-  const lineUserId = await verifyLineAccessToken(token)
-  if (!lineUserId) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-
   const { session_id } = await req.json()
   if (!session_id) return NextResponse.json({ error: 'Missing session_id' }, { status: 400 })
 
+  // Verify token and get player in parallel
+  const [lineUserId] = await Promise.all([verifyLineAccessToken(token)])
+  if (!lineUserId) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+
   const player = await getOrCreatePlayer(lineUserId)
 
-  // Check for existing record
   const { data: existing } = await supabaseAdmin
     .from('session_players')
     .select('*')
@@ -25,12 +26,10 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (existing) {
-    // Return current position if already on waitlist
     if (existing.status === 'waitlist') {
       const position = await getWaitlistPosition(session_id, existing.created_at)
       return NextResponse.json({ success: true, position })
     }
-    // Already on roster or absent — don't downgrade
     return NextResponse.json({ success: false, error: 'Already has status: ' + existing.status }, { status: 409 })
   }
 
@@ -47,35 +46,6 @@ export async function POST(req: NextRequest) {
     .eq('status', 'waitlist')
 
   return NextResponse.json({ success: true, position: count ?? 1 })
-}
-
-async function getOrCreatePlayer(lineUserId: string) {
-  const { data: existing } = await supabaseAdmin
-    .from('players')
-    .select('*')
-    .eq('line_user_id', lineUserId)
-    .single()
-
-  const profileRes = await fetch(`https://api.line.me/v2/bot/profile/${lineUserId}`, {
-    headers: { Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
-  })
-  const profile = profileRes.ok ? await profileRes.json() : null
-  const name = profile?.displayName ?? `User-${lineUserId.slice(-4)}`
-
-  if (existing) {
-    if (existing.name.startsWith('User-') && name !== existing.name) {
-      await supabaseAdmin.from('players').update({ name }).eq('id', existing.id)
-      return { ...existing, name }
-    }
-    return existing
-  }
-
-  const { data: created } = await supabaseAdmin
-    .from('players')
-    .insert({ line_user_id: lineUserId, name })
-    .select()
-    .single()
-  return created!
 }
 
 async function getWaitlistPosition(sessionId: string, createdAt: string): Promise<number> {
