@@ -11,13 +11,13 @@ export async function POST(req: NextRequest) {
   const token = extractBearerToken(req.headers.get('Authorization'))
   if (!token) return NextResponse.json({ error: 'Missing token' }, { status: 401 })
 
-  const { session_id } = await req.json()
+  const { session_id, display_name } = await req.json()
   if (!session_id) return NextResponse.json({ error: 'Missing session_id' }, { status: 400 })
 
   const lineUserId = await verifyLineAccessToken(token)
   if (!lineUserId) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
 
-  const player = await getOrCreatePlayer(lineUserId)
+  const player = await getOrCreatePlayer(lineUserId, display_name)
 
   const { data: existing } = await supabaseAdmin
     .from('session_players')

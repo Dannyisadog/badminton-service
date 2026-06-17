@@ -91,7 +91,7 @@ export default function SessionPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ session_id: sessionData.session.id }),
+        body: JSON.stringify({ session_id: sessionData.session.id, display_name: profile?.displayName }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Request failed");
