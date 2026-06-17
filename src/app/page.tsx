@@ -334,7 +334,7 @@ export default function SessionPage() {
         </div>
         <div className="badges">
           <span className="badge badge-success">
-            出席 {regular_count - absent.length}/{regular_count}
+            出席 {regular_count - absent.length + roster.length}/{regular_count}
           </span>
           {available_slots > 0 && (
             <span className="badge badge-warning">

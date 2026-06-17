@@ -117,7 +117,7 @@ export default function StatusPage() {
       {/* Summary badges */}
       <div className="card">
         <div className="badges" style={{ marginTop: 0 }}>
-          <span className="badge badge-success">出席 {roster.length}/{session.capacity}</span>
+          <span className="badge badge-success">出席 {session.capacity - absent.length + roster.length}/{session.capacity}</span>
           <span className="badge badge-danger">請假 {absent.length}</span>
           <span className="badge badge-warning">候補 {waitlist.length}</span>
         </div>
