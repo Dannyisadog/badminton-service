@@ -46,6 +46,7 @@ export async function GET() {
     return NextResponse.json({ error: rowsErr.message }, { status: 500 })
   }
 
+  console.log('session_players rows:', JSON.stringify(rows))
   const typedRows = (rows ?? []) as SessionPlayerWithPlayer[]
   const toEntry = (r: SessionPlayerWithPlayer) => ({
     id: r.players.id,
