@@ -80,7 +80,9 @@ export default function SessionPage() {
   if (liffError) {
     return (
       <div className="container">
-        <div className="loading">LIFF 初始化失敗，請在 LINE 中開啟</div>
+        <div className="card" style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-3)', fontSize: 14 }}>
+          LIFF 初始化失敗，請在 LINE 中開啟
+        </div>
       </div>
     )
   }
@@ -88,9 +90,33 @@ export default function SessionPage() {
   if (!isReady || loading) {
     return (
       <div className="container">
-        <div className="loading">
-          <span className="spinner" style={{ borderTopColor: '#06c755', borderColor: '#e8edf2' }} />
-          載入中...
+        {/* Skeleton hero card */}
+        <div className="card-accent" style={{ marginBottom: 12 }}>
+          <div className="skeleton" style={{ height: 24, width: '60%', marginBottom: 12 }} />
+          <div className="skeleton" style={{ height: 16, width: '80%', marginBottom: 8 }} />
+          <div className="skeleton" style={{ height: 16, width: '70%', marginBottom: 8 }} />
+          <div className="skeleton" style={{ height: 16, width: '50%', marginBottom: 16 }} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div className="skeleton" style={{ height: 26, width: 80, borderRadius: 'var(--radius-full)' }} />
+            <div className="skeleton" style={{ height: 26, width: 80, borderRadius: 'var(--radius-full)' }} />
+          </div>
+        </div>
+        {/* Skeleton actions card */}
+        <div className="card">
+          <div className="skeleton" style={{ height: 12, width: '30%', marginBottom: 16 }} />
+          <div className="skeleton" style={{ height: 48, borderRadius: 'var(--radius-lg)', marginBottom: 10 }} />
+          <div className="skeleton" style={{ height: 48, borderRadius: 'var(--radius-lg)', marginBottom: 10 }} />
+          <div className="skeleton" style={{ height: 48, borderRadius: 'var(--radius-lg)' }} />
+        </div>
+        {/* Skeleton list card */}
+        <div className="card">
+          <div className="skeleton" style={{ height: 12, width: '25%', marginBottom: 16 }} />
+          {[1, 2, 3].map((i) => (
+            <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '11px 0', borderBottom: i < 3 ? '1px solid var(--border)' : 'none' }}>
+              <div className="skeleton" style={{ width: 38, height: 38, borderRadius: '50%', flexShrink: 0 }} />
+              <div className="skeleton" style={{ height: 14, flex: 1 }} />
+            </div>
+          ))}
         </div>
       </div>
     )
@@ -99,9 +125,11 @@ export default function SessionPage() {
   if (!sessionData) {
     return (
       <div className="container">
-        <div className="loading">
-          找不到即將到來的場次
-          {loadError && <div style={{ fontSize: 12, color: '#f43f5e', wordBreak: 'break-all', marginTop: 4 }}>{loadError}</div>}
+        <div className="card" style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <p style={{ color: 'var(--text-3)', fontSize: 14, marginBottom: loadError ? 8 : 0 }}>找不到即將到來的場次</p>
+          {loadError && (
+            <p style={{ fontSize: 12, color: 'var(--danger-text)', wordBreak: 'break-all', marginTop: 4 }}>{loadError}</p>
+          )}
         </div>
       </div>
     )
@@ -123,8 +151,8 @@ export default function SessionPage() {
 
   return (
     <div className="container">
-      {/* Hero card */}
-      <div className="card card-hero">
+      {/* Hero info card */}
+      <div className="card-accent">
         <h1>🏸 羽球場次</h1>
         <div className="meta-row">📅 {dateStr}</div>
         <div className="meta-row">
@@ -137,19 +165,19 @@ export default function SessionPage() {
           🕗 {session.start_time.slice(0, 5)}{session.end_time ? ` ~ ${session.end_time.slice(0, 5)}` : ''}
         </div>
         <div className="badges">
-          <span className="badge badge-hero-green">出席 {regular_count - absent.length}/{regular_count}</span>
+          <span className="badge badge-success">出席 {regular_count - absent.length}/{regular_count}</span>
           {available_slots > 0 && (
-            <span className="badge badge-hero-yellow">可報名 {available_slots} 個</span>
+            <span className="badge badge-warning">可報名 {available_slots} 個</span>
           )}
           {waitlist.length > 0 && (
-            <span className="badge badge-hero-yellow">候補 {waitlist.length}</span>
+            <span className="badge badge-warning">候補 {waitlist.length}</span>
           )}
         </div>
       </div>
 
       {/* Actions */}
       <div className="card">
-        <p className="section-title">我的操作</p>
+        <p className="section-label">我的操作</p>
         {message && (
           <div className={`toast ${message.type === 'success' ? 'toast-success' : 'toast-error'}`}>
             {message.type === 'success' ? '✓' : '✕'} {message.text}
@@ -157,7 +185,7 @@ export default function SessionPage() {
         )}
         <div className="actions">
           <button
-            className="btn btn-green"
+            className="btn btn-primary"
             disabled={isLoading || myStatus !== null || available_slots === 0}
             onClick={() => callApi('/api/join')}
           >
@@ -165,7 +193,7 @@ export default function SessionPage() {
             {myStatus === 'roster' ? '✓ 已出席' : available_slots === 0 ? '名額已滿' : '加入出席'}
           </button>
           <button
-            className="btn btn-red"
+            className="btn btn-danger"
             disabled={isLoading}
             onClick={() => callApi(redAction)}
           >
@@ -173,7 +201,7 @@ export default function SessionPage() {
             {redLabel}
           </button>
           <button
-            className="btn btn-yellow"
+            className="btn btn-warning"
             disabled={isLoading || myStatus !== null || available_slots > 0}
             onClick={() => callApi('/api/waitlist')}
           >
@@ -185,12 +213,12 @@ export default function SessionPage() {
 
       {/* 請假名單 */}
       <div className="card">
-        <p className="section-title">請假名單 {absent.length > 0 && `· ${absent.length} 人`}</p>
+        <p className="section-label">請假名單 {absent.length > 0 && `· ${absent.length} 人`}</p>
         {absent.length === 0 ? (
-          <p className="empty">無人請假</p>
+          <p className="empty-state">無人請假</p>
         ) : (
           absent.map((p) => (
-            <PlayerRow key={p.id} player={p} isMe={p.line_user_id === profile?.userId} color="red" />
+            <PlayerRow key={p.id} player={p} isMe={p.line_user_id === profile?.userId} color="danger" />
           ))
         )}
       </div>
@@ -198,21 +226,21 @@ export default function SessionPage() {
       {/* 代打名單 */}
       {roster.length > 0 && (
         <div className="card">
-          <p className="section-title">代打名單 · {roster.length} 人</p>
+          <p className="section-label">代打名單 · {roster.length} 人</p>
           {roster.map((p) => (
-            <PlayerRow key={p.id} player={p} isMe={p.line_user_id === profile?.userId} color="green" />
+            <PlayerRow key={p.id} player={p} isMe={p.line_user_id === profile?.userId} color="success" />
           ))}
         </div>
       )}
 
       {/* 候補名單 */}
       <div className="card">
-        <p className="section-title">候補名單 {waitlist.length > 0 && `· ${waitlist.length} 人`}</p>
+        <p className="section-label">候補名單 {waitlist.length > 0 && `· ${waitlist.length} 人`}</p>
         {waitlist.length === 0 ? (
-          <p className="empty">候補名單為空</p>
+          <p className="empty-state">候補名單為空</p>
         ) : (
           waitlist.map((p, i) => (
-            <PlayerRow key={p.id} player={p} isMe={p.line_user_id === profile?.userId} color="yellow" rank={i + 1} />
+            <PlayerRow key={p.id} player={p} isMe={p.line_user_id === profile?.userId} color="warning" rank={i + 1} />
           ))
         )}
       </div>
@@ -228,13 +256,13 @@ function PlayerRow({
 }: {
   player: PlayerWithStatus
   isMe: boolean
-  color: 'green' | 'red' | 'yellow'
+  color: 'success' | 'danger' | 'warning'
   rank?: number
 }) {
   const initials = player.name.slice(0, 1).toUpperCase()
   return (
     <div className="player-row">
-      <div className={`player-avatar player-avatar-${color}`}>{initials}</div>
+      <div className={`avatar avatar-${color}`}>{initials}</div>
       <div className="player-info">
         <span className="player-name">
           {player.name}
