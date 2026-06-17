@@ -20,6 +20,7 @@ interface SessionData {
   roster: PlayerWithStatus[];
   absent: PlayerWithStatus[];
   waitlist: PlayerWithStatus[];
+  returning: PlayerWithStatus[];
   available_slots: number;
 }
 
@@ -43,6 +44,8 @@ export default function SessionPage() {
           return "absent";
         if (sessionData.waitlist.find((p) => p.line_user_id === id))
           return "waitlist";
+        if (sessionData.returning.find((p) => p.line_user_id === id))
+          return "returning";
         return null;
       })()
     : null;
@@ -259,7 +262,7 @@ export default function SessionPage() {
     );
   }
 
-  const { session, roster, absent, waitlist, regular_count, available_slots } =
+  const { session, roster, absent, waitlist, returning, regular_count, available_slots } =
     sessionData;
   const dateObj = new Date(session.date + "T00:00:00");
   const dateStr = dateObj.toLocaleDateString("zh-TW", {
@@ -273,7 +276,7 @@ export default function SessionPage() {
   const redAction =
     myStatus === "absent"
       ? "/api/cancel-absent"
-      : myStatus === "waitlist" || myStatus === "roster"
+      : myStatus === "waitlist" || myStatus === "roster" || myStatus === "returning"
         ? "/api/leave"
         : "/api/absent";
   const redLabel =
@@ -283,7 +286,9 @@ export default function SessionPage() {
         ? "取消候補"
         : myStatus === "roster"
           ? "取消代打"
-          : "請假";
+          : myStatus === "returning"
+            ? "放棄等位"
+            : "請假";
 
   const primaryIcon =
     myStatus === "roster" ? (
@@ -334,7 +339,7 @@ export default function SessionPage() {
         </div>
         <div className="badges">
           <span className="badge badge-success">
-            出席 {regular_count - absent.length + roster.length}/{regular_count}
+            出席 {regular_count - absent.length - returning.length + roster.length}/{regular_count}
           </span>
           {available_slots > 0 && (
             <span className="badge badge-warning">
@@ -370,9 +375,11 @@ export default function SessionPage() {
             )}
             {myStatus === "roster"
               ? "已出席"
-              : available_slots === 0
-                ? "名額已滿"
-                : "報名"}
+              : myStatus === "returning"
+                ? "等待補位中"
+                : available_slots === 0
+                  ? "名額已滿"
+                  : "報名"}
           </button>
           <button
             className="btn btn-danger"
@@ -390,6 +397,7 @@ export default function SessionPage() {
             className="btn btn-accent"
             disabled={isLoading || myStatus !== null || available_slots > 0}
             onClick={() => callApi("/api/waitlist")}
+            style={{ display: myStatus === "returning" ? "none" : undefined }}
           >
             {loadingAction === "/api/waitlist" ? (
               <span className="spinner" />

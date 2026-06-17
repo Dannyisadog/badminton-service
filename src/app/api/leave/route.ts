@@ -32,11 +32,13 @@ export async function POST(req: NextRequest) {
     .eq('player_id', player.id)
     .single()
 
-  if (sp?.status === 'absent') {
+  // Already absent or not in any list — nothing to do
+  if (!sp || sp.status === 'absent') {
     return NextResponse.json({ success: true, promoted_player: null })
   }
 
-  if (!sp || sp.status === 'waitlist') {
+  // Waitlist or returning: just remove from queue, no slot freed
+  if (sp.status === 'waitlist' || sp.status === 'returning') {
     await supabaseAdmin
       .from('session_players')
       .delete()
@@ -45,13 +47,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, promoted_player: null })
   }
 
-  const { error: updateErr } = await supabaseAdmin
+  // Roster (substitute) leaves: delete record and open 1 slot for recalculate
+  const { error: deleteErr } = await supabaseAdmin
     .from('session_players')
-    .update({ status: 'absent' })
+    .delete()
     .eq('session_id', session_id)
     .eq('player_id', player.id)
 
-  if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
+  if (deleteErr) return NextResponse.json({ error: deleteErr.message }, { status: 500 })
 
   const { promoted } = await recalculate(session_id)
   const promotedPlayer = promoted[0] ?? null

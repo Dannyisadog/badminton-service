@@ -10,6 +10,7 @@ interface SessionData {
   roster: PlayerWithStatus[]
   absent: PlayerWithStatus[]
   waitlist: PlayerWithStatus[]
+  returning: PlayerWithStatus[]
   available_slots: number
 }
 
@@ -89,7 +90,7 @@ export default function StatusPage() {
     )
   }
 
-  const { session, roster, absent, waitlist } = sessionData
+  const { session, roster, absent, waitlist, returning } = sessionData
   const dateObj = new Date(session.date + 'T00:00:00')
   const dateStr = dateObj.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'short' })
 
@@ -117,7 +118,7 @@ export default function StatusPage() {
       {/* Summary badges */}
       <div className="card">
         <div className="badges" style={{ marginTop: 0 }}>
-          <span className="badge badge-success">出席 {session.capacity - absent.length + roster.length}/{session.capacity}</span>
+          <span className="badge badge-success">出席 {session.capacity - absent.length - returning.length + roster.length}/{session.capacity}</span>
           <span className="badge badge-danger">請假 {absent.length}</span>
           <span className="badge badge-warning">候補 {waitlist.length}</span>
         </div>

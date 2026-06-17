@@ -1,4 +1,4 @@
-export type PlayerStatus = 'roster' | 'absent' | 'waitlist'
+export type PlayerStatus = 'roster' | 'absent' | 'waitlist' | 'returning'
 
 export interface Player {
   id: string
@@ -46,6 +46,7 @@ export interface SessionStatus {
   roster: PlayerWithStatus[]
   absent: PlayerWithStatus[]
   waitlist: PlayerWithStatus[]
+  returning: PlayerWithStatus[]
   available_slots: number
 }
 

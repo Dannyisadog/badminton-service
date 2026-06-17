@@ -1,59 +1,70 @@
 /**
  * Capacity invariant tests
- * ACTIVE = regular_count(24) - absent + roster
+ * ACTIVE = regular_count(24) - absent - returning + roster
  * Invariant: ACTIVE <= 24 at all times
+ *
+ * Status roles:
+ *   absent    — regular player marked absent (slot open for substitute)
+ *   returning — regular player who canceled absence but slot is taken (waits for substitute to leave)
+ *   roster    — substitute actively playing
+ *   waitlist  — substitute waiting for a slot
  */
 
 const CAPACITY = 24
 
-function calcActive(absent: number, roster: number): number {
-  return CAPACITY - absent + roster
+function calcActive(absent: number, returning: number, roster: number): number {
+  return CAPACITY - absent - returning + roster
 }
 
-function cancelAbsent(absentCount: number, rosterCount: number): {
-  action: 'back_direct' | 'back_demote_roster'
+function cancelAbsent(absentCount: number, returningCount: number, rosterCount: number): {
+  action: 'back_direct' | 'to_returning'
   activeAfter: number
-  rosterAfter: number
   absentAfter: number
+  returningAfter: number
+  rosterAfter: number
 } {
-  const absentAfter = absentCount - 1
-  const remainingSlots = absentAfter - rosterCount
+  const remainingSlots = (absentCount - 1) - rosterCount
 
   if (remainingSlots >= 0) {
+    // B comes back directly
     return {
       action: 'back_direct',
-      absentAfter,
+      absentAfter: absentCount - 1,
+      returningAfter: returningCount,
       rosterAfter: rosterCount,
-      activeAfter: calcActive(absentAfter, rosterCount),
+      activeAfter: calcActive(absentCount - 1, returningCount, rosterCount),
     }
   } else {
-    // Demote newest roster player to preserve capacity
+    // All slots filled — B enters returning queue
     return {
-      action: 'back_demote_roster',
-      absentAfter,
-      rosterAfter: rosterCount - 1,
-      activeAfter: calcActive(absentAfter, rosterCount - 1),
+      action: 'to_returning',
+      absentAfter: absentCount - 1,
+      returningAfter: returningCount + 1,
+      rosterAfter: rosterCount,
+      activeAfter: calcActive(absentCount - 1, returningCount + 1, rosterCount),
     }
   }
 }
 
-// ─── T_FIX_1: No overflow after promotion + cancel ─────────────────────────
-describe('T_FIX_1 — No overflow after promotion + cancel', () => {
-  test('A on waitlist promoted, B cancels absence → ACTIVE stays 24, A stays active', () => {
-    // Before B cancels: B absent(1), A roster(1)
-    const result = cancelAbsent(1, 1)
+// ─── T_FIX_1: Promotion is permanent — no rollback ──────────────────────────
+describe('T_FIX_1 — No rollback after promotion', () => {
+  test('B absent → A promoted → B cancels: A stays, B enters returning queue', () => {
+    // Before B cancels: absent=1(B), roster=1(A), returning=0
+    const result = cancelAbsent(1, 0, 1)
+    expect(result.action).toBe('to_returning')
+    // A (roster) untouched
+    expect(result.rosterAfter).toBe(1)
+    // B is now 'returning'
+    expect(result.returningAfter).toBe(1)
+    // ACTIVE = 24 - 0(absent) - 1(returning) + 1(roster) = 24
     expect(result.activeAfter).toBe(24)
     expect(result.activeAfter).toBeLessThanOrEqual(CAPACITY)
-    expect(result.action).toBe('back_demote_roster')
-    // A (roster) was demoted; rosterAfter = 0
-    expect(result.rosterAfter).toBe(0)
   })
 
-  test('ACTIVE never exceeds 24 regardless of scenario', () => {
-    // All possible combinations of absent/roster (roster <= absent by invariant)
+  test('ACTIVE never exceeds 24 for any absent/roster combination', () => {
     for (let absent = 1; absent <= 5; absent++) {
       for (let roster = 0; roster <= absent; roster++) {
-        const result = cancelAbsent(absent, roster)
+        const result = cancelAbsent(absent, 0, roster)
         expect(result.activeAfter).toBeLessThanOrEqual(CAPACITY)
         expect(result.activeAfter).toBeGreaterThanOrEqual(0)
       }
@@ -63,119 +74,142 @@ describe('T_FIX_1 — No overflow after promotion + cancel', () => {
 
 // ─── T_FIX_2: Returning user respects capacity ──────────────────────────────
 describe('T_FIX_2 — Returning user respects capacity', () => {
-  test('B cancels absence when slot is free → B returns directly', () => {
-    // absent=1 (B), roster=0 → slot not filled
-    const result = cancelAbsent(1, 0)
+  test('B cancels when slot is free → B returns directly', () => {
+    // absent=1(B), roster=0 — slot not filled
+    const result = cancelAbsent(1, 0, 0)
     expect(result.action).toBe('back_direct')
     expect(result.activeAfter).toBe(24)
   })
 
-  test('B cancels absence when slot is taken → newest roster demoted', () => {
-    // absent=1 (B), roster=1 (A took B's slot)
-    const result = cancelAbsent(1, 1)
-    expect(result.action).toBe('back_demote_roster')
+  test('B cancels when slot is taken → B enters returning queue', () => {
+    // absent=1(B), roster=1(A) — slot taken
+    const result = cancelAbsent(1, 0, 1)
+    expect(result.action).toBe('to_returning')
     expect(result.activeAfter).toBe(24)
   })
 
-  test('B cancels, multiple absent but all filled → demote newest roster', () => {
+  test('B cancels when all slots filled → enters returning queue', () => {
     // absent=2, roster=2 (all slots filled)
-    const result = cancelAbsent(2, 2)
-    expect(result.action).toBe('back_demote_roster')
+    const result = cancelAbsent(2, 0, 2)
+    expect(result.action).toBe('to_returning')
     expect(result.activeAfter).toBe(24)
   })
 
-  test('B cancels, multiple absent not fully filled → B returns directly', () => {
+  test('B cancels when some slots still open → B returns directly', () => {
     // absent=3, roster=1 (2 slots still open)
-    const result = cancelAbsent(3, 1)
+    const result = cancelAbsent(3, 0, 1)
     expect(result.action).toBe('back_direct')
-    expect(result.activeAfter).toBe(23) // 24 - 2 remaining absent + 1 roster
+    expect(result.activeAfter).toBe(23) // 24 - 2(absent) - 0(returning) + 1(roster)
   })
 })
 
-// ─── T_FIX_3: Capacity invariant is always maintained ───────────────────────
+// ─── T_FIX_3: ACTIVE <= 24 always true ──────────────────────────────────────
 describe('T_FIX_3 — ACTIVE <= 24 always true', () => {
-  test('roster <= absent invariant holds before cancel', () => {
-    // roster can never exceed absent (available_slots = absent - roster >= 0)
+  test('formula holds for all valid states', () => {
     const cases = [
-      { absent: 1, roster: 0 },
-      { absent: 1, roster: 1 },
-      { absent: 2, roster: 0 },
-      { absent: 2, roster: 1 },
-      { absent: 2, roster: 2 },
+      { absent: 1, returning: 0, roster: 0 },
+      { absent: 1, returning: 0, roster: 1 },
+      { absent: 0, returning: 1, roster: 1 }, // after B cancels with slot taken
+      { absent: 0, returning: 0, roster: 0 },
+      { absent: 2, returning: 0, roster: 2 },
+      { absent: 1, returning: 1, roster: 1 }, // B absent, C returning, A roster
     ]
-    for (const { absent, roster } of cases) {
-      expect(calcActive(absent, roster)).toBeLessThanOrEqual(CAPACITY)
+    for (const { absent, returning, roster } of cases) {
+      expect(calcActive(absent, returning, roster)).toBeLessThanOrEqual(CAPACITY)
     }
   })
 
   test('cancel-absent result always satisfies ACTIVE <= 24', () => {
-    const cases = [
-      { absent: 1, roster: 0 },
-      { absent: 1, roster: 1 },
-      { absent: 2, roster: 1 },
-      { absent: 2, roster: 2 },
-      { absent: 3, roster: 2 },
-      { absent: 3, roster: 3 },
-    ]
-    for (const { absent, roster } of cases) {
-      const result = cancelAbsent(absent, roster)
-      expect(result.activeAfter).toBeLessThanOrEqual(CAPACITY)
+    for (let absent = 1; absent <= 5; absent++) {
+      for (let roster = 0; roster <= absent; roster++) {
+        const result = cancelAbsent(absent, 0, roster)
+        expect(result.activeAfter).toBeLessThanOrEqual(CAPACITY)
+      }
     }
+  })
+})
+
+// ─── Recalculate: returning player promoted when substitute leaves ────────────
+describe('Recalculate — returning player promoted', () => {
+  function simulateRosterLeave(absent: number, returning: number, roster: number) {
+    // Roster player leaves: delete their record
+    const rosterAfter = roster - 1
+    // returningOpenSlots = (absent + returning) - rosterAfter
+    const returningOpenSlots = (absent + returning) - rosterAfter
+    let returningAfter = returning
+    if (returningOpenSlots > 0 && returning > 0) {
+      // Promote returning players (delete records)
+      const toPromote = Math.min(returning, returningOpenSlots)
+      returningAfter = returning - toPromote
+    }
+    return {
+      activeAfter: calcActive(absent, returningAfter, rosterAfter),
+      returningAfter,
+    }
+  }
+
+  test('substitute leaves → returning regular gets slot back', () => {
+    // State: absent=0, returning=1(B), roster=1(A) — ACTIVE=24
+    // A leaves
+    const result = simulateRosterLeave(0, 1, 1)
+    expect(result.activeAfter).toBe(24) // B promoted back to regular
+    expect(result.returningAfter).toBe(0)
+  })
+
+  test('substitute leaves with no returning → ACTIVE drops by 1', () => {
+    // State: absent=1(C), returning=0, roster=1(A) — ACTIVE=24
+    // A leaves
+    const result = simulateRosterLeave(1, 0, 1)
+    // After A leaves: absent=1, roster=0 → waitlist player would be promoted
+    // recalculate would promote next waitlist player if any
+    expect(result.activeAfter).toBeLessThanOrEqual(CAPACITY)
   })
 })
 
 // ─── Absence logic ────────────────────────────────────────────────────────────
 describe('Absence logic', () => {
   test('T3 — Single absence reduces ACTIVE by 1', () => {
-    expect(calcActive(1, 0)).toBe(23)
+    expect(calcActive(1, 0, 0)).toBe(23)
   })
 
   test('T4 — Multiple absences reduce ACTIVE proportionally', () => {
-    expect(calcActive(2, 0)).toBe(22)
-    expect(calcActive(5, 0)).toBe(19)
+    expect(calcActive(2, 0, 0)).toBe(22)
+    expect(calcActive(5, 0, 0)).toBe(19)
   })
 
   test('T10 — Absence triggers promotion: ACTIVE unchanged', () => {
-    // absent=1, waitlist=[Kevin] → Kevin promoted to roster=1
-    expect(calcActive(1, 1)).toBe(24)
+    // absent=1, roster=1 (waitlist player promoted)
+    expect(calcActive(1, 0, 1)).toBe(24)
   })
 
   test('T11 — Multiple promotions fill multiple slots', () => {
-    // absent=2, roster=2 (A and B both promoted)
-    expect(calcActive(2, 2)).toBe(24)
+    expect(calcActive(2, 0, 2)).toBe(24)
   })
 
   test('T12 — No waitlist: ACTIVE drops', () => {
-    // absent=2, roster=0
-    expect(calcActive(2, 0)).toBe(22)
+    expect(calcActive(2, 0, 0)).toBe(22)
   })
 
   test('T17 — Absence + promotion = ACTIVE unchanged', () => {
-    const before = calcActive(0, 0)   // 24
-    const after = calcActive(1, 1)    // 24 - 1 + 1
-    expect(after).toBe(before)
+    expect(calcActive(0, 0, 0)).toBe(calcActive(1, 0, 1))
   })
 })
 
 // ─── Promotion logic ─────────────────────────────────────────────────────────
 describe('Promotion logic', () => {
   test('T7 — Waitlist entry when full: ACTIVE stays 24', () => {
-    // No absent, full capacity — A waits
-    expect(calcActive(0, 0)).toBe(24)
-    // A is in waitlist, doesn't affect ACTIVE
+    expect(calcActive(0, 0, 0)).toBe(24)
   })
 
   test('T9 — Promoted from waitlist: ACTIVE increases', () => {
-    const before = calcActive(1, 0) // 23 — slot open
-    const after = calcActive(1, 1)  // 24 — slot filled
+    const before = calcActive(1, 0, 0) // 23
+    const after = calcActive(1, 0, 1)  // 24
     expect(after).toBe(before + 1)
   })
 
-  test('T16 — ACTIVE never exceeds capacity regardless of roster count', () => {
-    // roster can never exceed absent
+  test('T16 — ACTIVE never exceeds capacity', () => {
     for (let r = 0; r <= 10; r++) {
-      // with absent = r (maximum valid roster = absent)
-      expect(calcActive(r, r)).toBeLessThanOrEqual(CAPACITY)
+      expect(calcActive(r, 0, r)).toBeLessThanOrEqual(CAPACITY)
     }
   })
 })

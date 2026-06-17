@@ -1,5 +1,5 @@
 import { supabaseAdmin } from './supabase'
-import { notifyUser, buildPromotionNotification } from './line'
+import { notifyUser, buildPromotionNotification, buildCancelAbsentNotification } from './line'
 import type { Player } from '@/types'
 
 export interface RecalculateResult {
@@ -7,27 +7,53 @@ export interface RecalculateResult {
 }
 
 export async function recalculate(sessionId: string): Promise<RecalculateResult> {
-  // Open slots = absent regulars not yet filled by substitutes
-  const { count: absentCount, error: absentErr } = await supabaseAdmin
-    .from('session_players')
-    .select('*', { count: 'exact', head: true })
-    .eq('session_id', sessionId)
-    .eq('status', 'absent')
+  const [absentResult, rosterResult, returningResult] = await Promise.all([
+    supabaseAdmin.from('session_players').select('*', { count: 'exact', head: true }).eq('session_id', sessionId).eq('status', 'absent'),
+    supabaseAdmin.from('session_players').select('*', { count: 'exact', head: true }).eq('session_id', sessionId).eq('status', 'roster'),
+    supabaseAdmin.from('session_players').select('*', { count: 'exact', head: true }).eq('session_id', sessionId).eq('status', 'returning'),
+  ])
 
-  if (absentErr) throw absentErr
+  const absent = absentResult.count ?? 0
+  const roster = rosterResult.count ?? 0
+  const returning = returningResult.count ?? 0
 
-  const { count: rosterCount, error: countErr } = await supabaseAdmin
-    .from('session_players')
-    .select('*', { count: 'exact', head: true })
-    .eq('session_id', sessionId)
-    .eq('status', 'roster')
+  const promoted: Player[] = []
 
-  if (countErr) throw countErr
+  // Phase 1: Bring back 'returning' regulars when ACTIVE < 24
+  // A returning player can come back when (absent + returning) > roster
+  const returningOpenSlots = (absent + returning) - roster
+  if (returningOpenSlots > 0 && returning > 0) {
+    type Row = { id: string; player_id: string; players: Player | Player[] | null }
 
-  const openSlots = (absentCount ?? 0) - (rosterCount ?? 0)
-  if (openSlots <= 0) return { promoted: [] }
+    const { data: returningList } = await supabaseAdmin
+      .from('session_players')
+      .select('id, player_id, players(id, name, line_user_id)')
+      .eq('session_id', sessionId)
+      .eq('status', 'returning')
+      .order('created_at', { ascending: true })
+      .limit(returningOpenSlots)
 
-  // Get waitlist in FIFO order
+    if (returningList && returningList.length > 0) {
+      const rows = returningList as unknown as Row[]
+      const ids = rows.map((r) => r.id)
+      await supabaseAdmin.from('session_players').delete().in('id', ids)
+
+      const returningPlayers = rows
+        .map((r) => (Array.isArray(r.players) ? r.players[0] : r.players))
+        .filter((p): p is Player => p != null)
+
+      await Promise.all(
+        returningPlayers.map((p) =>
+          notifyUser(p.line_user_id, buildCancelAbsentNotification(p.name, 'back')).catch(console.error)
+        )
+      )
+    }
+  }
+
+  // Phase 2: Fill remaining absent slots from waitlist (promote to roster)
+  const openSlots = absent - roster
+  if (openSlots <= 0) return { promoted }
+
   const { data: waitlist, error: waitlistErr } = await supabaseAdmin
     .from('session_players')
     .select('id, player_id, players(id, name, line_user_id)')
@@ -37,12 +63,11 @@ export async function recalculate(sessionId: string): Promise<RecalculateResult>
     .limit(openSlots)
 
   if (waitlistErr) throw waitlistErr
-  if (!waitlist || waitlist.length === 0) return { promoted: [] }
+  if (!waitlist || waitlist.length === 0) return { promoted }
 
   type WaitlistRow = { id: string; player_id: string; players: Player | Player[] | null }
   const toPromote = waitlist as unknown as WaitlistRow[]
 
-  // Promote waitlist players
   const ids = toPromote.map((row) => row.id)
   const { error: updateErr } = await supabaseAdmin
     .from('session_players')
@@ -55,12 +80,13 @@ export async function recalculate(sessionId: string): Promise<RecalculateResult>
     .map((row) => (Array.isArray(row.players) ? row.players[0] : row.players))
     .filter((p): p is Player => p != null)
 
-  // Notify each promoted player via LINE DM
+  promoted.push(...promotedPlayers)
+
   await Promise.all(
     promotedPlayers.map((p) =>
       notifyUser(p.line_user_id, buildPromotionNotification(p.name)).catch(console.error)
     )
   )
 
-  return { promoted: promotedPlayers }
+  return { promoted }
 }

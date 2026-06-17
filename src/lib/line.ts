@@ -72,11 +72,11 @@ export function buildAbsentNotification(
 
 export function buildCancelAbsentNotification(
   playerName: string,
-  newStatus: 'back' | 'waitlist'
+  newStatus: 'back' | 'waitlist' | 'returning'
 ): string {
   const detail = newStatus === 'back'
     ? `${playerName} 取消請假，已加回出席名單`
-    : `${playerName} 取消請假，名額已滿，已加入候補`
+    : `${playerName} 取消請假，名額已滿，已加入候補等待遞補`
   return withLink([`🔔 出席異動`, ``, detail])
 }
 

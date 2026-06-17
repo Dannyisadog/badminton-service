@@ -50,6 +50,7 @@ export async function GET(
     roster,
     absent,
     waitlist,
+    returning: typedRows.filter((r) => r.status === 'returning').map(toEntry),
     available_slots: Math.max(0, absent.length - roster.length),
   }
 

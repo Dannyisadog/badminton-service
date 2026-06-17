@@ -58,6 +58,7 @@ export async function POST() {
   const absent = typedRows.filter((r) => r.status === 'absent').map(toEntry)
   const roster = typedRows.filter((r) => r.status === 'roster').map(toEntry)
   const waitlist = typedRows.filter((r) => r.status === 'waitlist').map(toEntry)
+  const returning = typedRows.filter((r) => r.status === 'returning').map(toEntry)
 
   const result: SessionStatus = {
     session,
@@ -65,6 +66,7 @@ export async function POST() {
     roster,
     absent,
     waitlist,
+    returning,
     available_slots: Math.max(0, absent.length - roster.length),
   }
 
