@@ -63,10 +63,7 @@ export default function SessionPage() {
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({ session_id: sessionData.session.id }),
       })
       const data = await res.json()
@@ -83,7 +80,7 @@ export default function SessionPage() {
   if (liffError) {
     return (
       <div className="container">
-        <div className="loading">LIFF 初始化失敗，請在 LINE 中開啟此頁面</div>
+        <div className="loading">LIFF 初始化失敗，請在 LINE 中開啟</div>
       </div>
     )
   }
@@ -91,7 +88,10 @@ export default function SessionPage() {
   if (!isReady || loading) {
     return (
       <div className="container">
-        <div className="loading">載入中...</div>
+        <div className="loading">
+          <span className="spinner" style={{ borderTopColor: '#06c755', borderColor: '#e8edf2' }} />
+          載入中...
+        </div>
       </div>
     )
   }
@@ -101,11 +101,7 @@ export default function SessionPage() {
       <div className="container">
         <div className="loading">
           找不到即將到來的場次
-          {loadError && (
-            <div style={{ marginTop: 8, fontSize: 12, color: '#991b1b', wordBreak: 'break-all' }}>
-              {loadError}
-            </div>
-          )}
+          {loadError && <div style={{ fontSize: 12, color: '#f43f5e', wordBreak: 'break-all', marginTop: 4 }}>{loadError}</div>}
         </div>
       </div>
     )
@@ -113,52 +109,40 @@ export default function SessionPage() {
 
   const { session, roster, absent, waitlist, regular_count, available_slots } = sessionData
   const dateObj = new Date(session.date + 'T00:00:00')
-  const dateStr = dateObj.toLocaleDateString('zh-TW', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'long',
-  })
+  const dateStr = dateObj.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
 
   const isLoading = loadingAction !== null
-
   const redAction =
     myStatus === 'absent' ? '/api/cancel-absent' :
-    myStatus === 'waitlist' ? '/api/leave' :
-    myStatus === 'roster' ? '/api/leave' :
+    myStatus === 'waitlist' || myStatus === 'roster' ? '/api/leave' :
     '/api/absent'
   const redLabel =
     myStatus === 'absent' ? '取消請假' :
     myStatus === 'waitlist' ? '取消候補' :
-    myStatus === 'roster' ? '取消代打' :
-    '請假'
+    myStatus === 'roster' ? '取消代打' : '請假'
 
   return (
     <div className="container">
-      {/* Session Info */}
-      <div className="card">
+      {/* Hero card */}
+      <div className="card card-hero">
         <h1>🏸 羽球場次</h1>
         <div className="meta-row">📅 {dateStr}</div>
         <div className="meta-row">
           📍{' '}
           {session.location.startsWith('http') ? (
-            <a href={session.location} target="_blank" rel="noopener noreferrer" style={{ color: '#06c755' }}>
-              查看地圖
-            </a>
-          ) : (
-            session.location
-          )}
+            <a href={session.location} target="_blank" rel="noopener noreferrer">查看地圖</a>
+          ) : session.location}
         </div>
         <div className="meta-row">
           🕗 {session.start_time.slice(0, 5)}{session.end_time ? ` ~ ${session.end_time.slice(0, 5)}` : ''}
         </div>
-        <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <span className="badge badge-green">出席 {regular_count - absent.length}/{regular_count}</span>
+        <div className="badges">
+          <span className="badge badge-hero-green">出席 {regular_count - absent.length}/{regular_count}</span>
           {available_slots > 0 && (
-            <span className="badge badge-red">請假 {absent.length} 人，可報名 {available_slots} 個</span>
+            <span className="badge badge-hero-yellow">可報名 {available_slots} 個</span>
           )}
           {waitlist.length > 0 && (
-            <span className="badge badge-yellow">候補 {waitlist.length}</span>
+            <span className="badge badge-hero-yellow">候補 {waitlist.length}</span>
           )}
         </div>
       </div>
@@ -167,17 +151,8 @@ export default function SessionPage() {
       <div className="card">
         <p className="section-title">我的操作</p>
         {message && (
-          <div
-            style={{
-              padding: '10px 12px',
-              borderRadius: 8,
-              marginBottom: 12,
-              background: message.type === 'success' ? '#dcfce7' : '#fee2e2',
-              color: message.type === 'success' ? '#166534' : '#991b1b',
-              fontSize: 14,
-            }}
-          >
-            {message.text}
+          <div className={`toast ${message.type === 'success' ? 'toast-success' : 'toast-error'}`}>
+            {message.type === 'success' ? '✓' : '✕'} {message.text}
           </div>
         )}
         <div className="actions">
@@ -187,9 +162,8 @@ export default function SessionPage() {
             onClick={() => callApi('/api/join')}
           >
             {loadingAction === '/api/join' && <span className="spinner" />}
-            {myStatus === 'roster' ? '已出席' : available_slots === 0 ? '名額已滿' : '加入出席'}
+            {myStatus === 'roster' ? '✓ 已出席' : available_slots === 0 ? '名額已滿' : '加入出席'}
           </button>
-
           <button
             className="btn btn-red"
             disabled={isLoading}
@@ -198,33 +172,25 @@ export default function SessionPage() {
             {loadingAction === redAction && <span className="spinner" />}
             {redLabel}
           </button>
-
           <button
             className="btn btn-yellow"
             disabled={isLoading || myStatus !== null || available_slots > 0}
             onClick={() => callApi('/api/waitlist')}
           >
             {loadingAction === '/api/waitlist' && <span className="spinner" />}
-            {myStatus === 'waitlist' ? '已在候補名單' : '加入候補'}
+            {myStatus === 'waitlist' ? '✓ 已在候補名單' : '加入候補'}
           </button>
         </div>
       </div>
 
       {/* 請假名單 */}
       <div className="card">
-        <p className="section-title">請假名單（{absent.length} 人）</p>
+        <p className="section-title">請假名單 {absent.length > 0 && `· ${absent.length} 人`}</p>
         {absent.length === 0 ? (
           <p className="empty">無人請假</p>
         ) : (
-          absent.map((p, i) => (
-            <div className="player-row" key={p.id}>
-              <span style={{ fontSize: 14 }}>
-                {i + 1}. {p.name}
-                {p.line_user_id === profile?.userId && (
-                  <span style={{ color: '#e53e3e', marginLeft: 6, fontSize: 12 }}>（我）</span>
-                )}
-              </span>
-            </div>
+          absent.map((p) => (
+            <PlayerRow key={p.id} player={p} isMe={p.line_user_id === profile?.userId} color="red" />
           ))
         )}
       </div>
@@ -232,35 +198,21 @@ export default function SessionPage() {
       {/* 代打名單 */}
       {roster.length > 0 && (
         <div className="card">
-          <p className="section-title">代打名單（{roster.length} 人）</p>
-          {roster.map((p, i) => (
-            <div className="player-row" key={p.id}>
-              <span style={{ fontSize: 14 }}>
-                {i + 1}. {p.name}
-                {p.line_user_id === profile?.userId && (
-                  <span style={{ color: '#06c755', marginLeft: 6, fontSize: 12 }}>（我）</span>
-                )}
-              </span>
-            </div>
+          <p className="section-title">代打名單 · {roster.length} 人</p>
+          {roster.map((p) => (
+            <PlayerRow key={p.id} player={p} isMe={p.line_user_id === profile?.userId} color="green" />
           ))}
         </div>
       )}
 
       {/* 候補名單 */}
       <div className="card">
-        <p className="section-title">候補名單（{waitlist.length} 人）</p>
+        <p className="section-title">候補名單 {waitlist.length > 0 && `· ${waitlist.length} 人`}</p>
         {waitlist.length === 0 ? (
           <p className="empty">候補名單為空</p>
         ) : (
           waitlist.map((p, i) => (
-            <div className="player-row" key={p.id}>
-              <span style={{ fontSize: 14 }}>
-                #{i + 1} {p.name}
-                {p.line_user_id === profile?.userId && (
-                  <span style={{ color: '#d97706', marginLeft: 6, fontSize: 12 }}>（我）</span>
-                )}
-              </span>
-            </div>
+            <PlayerRow key={p.id} player={p} isMe={p.line_user_id === profile?.userId} color="yellow" rank={i + 1} />
           ))
         )}
       </div>
@@ -268,6 +220,31 @@ export default function SessionPage() {
   )
 }
 
+function PlayerRow({
+  player,
+  isMe,
+  color,
+  rank,
+}: {
+  player: PlayerWithStatus
+  isMe: boolean
+  color: 'green' | 'red' | 'yellow'
+  rank?: number
+}) {
+  const initials = player.name.slice(0, 1).toUpperCase()
+  return (
+    <div className="player-row">
+      <div className={`player-avatar player-avatar-${color}`}>{initials}</div>
+      <div className="player-info">
+        <span className="player-name">
+          {player.name}
+          {isMe && <span className="player-me">（我）</span>}
+        </span>
+      </div>
+      {rank !== undefined && <span className="player-rank">#{rank}</span>}
+    </div>
+  )
+}
 
 function getSuccessMessage(endpoint: string, data: Record<string, unknown>): string {
   if (endpoint === '/api/join') {

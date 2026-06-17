@@ -15,6 +15,12 @@ interface SessionData {
 
 type Tab = 'roster' | 'absent' | 'waitlist'
 
+const TAB_COLORS: Record<Tab, 'green' | 'red' | 'yellow'> = {
+  roster: 'green',
+  absent: 'red',
+  waitlist: 'yellow',
+}
+
 export default function StatusPage() {
   const { isReady, profile } = useLiff()
   const [sessionData, setSessionData] = useState<SessionData | null>(null)
@@ -42,7 +48,10 @@ export default function StatusPage() {
   if (!isReady || loading) {
     return (
       <div className="container">
-        <div className="loading">載入中...</div>
+        <div className="loading">
+          <span className="spinner" style={{ borderTopColor: '#06c755', borderColor: '#e8edf2' }} />
+          載入中...
+        </div>
       </div>
     )
   }
@@ -57,60 +66,45 @@ export default function StatusPage() {
 
   const { session, roster, absent, waitlist } = sessionData
   const dateObj = new Date(session.date + 'T00:00:00')
-  const dateStr = dateObj.toLocaleDateString('zh-TW', {
-    month: 'numeric',
-    day: 'numeric',
-    weekday: 'short',
-  })
+  const dateStr = dateObj.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'short' })
 
   const currentList = activeTab === 'roster' ? roster : activeTab === 'absent' ? absent : waitlist
+  const color = TAB_COLORS[activeTab]
 
   return (
     <div className="container">
-      <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <Link href="/" style={{ color: '#06c755', textDecoration: 'none', fontSize: 20 }}>
+      <div className="card card-hero" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <Link href="/" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: 22, lineHeight: 1 }}>
           ←
         </Link>
         <div>
-          <h1>完整名單</h1>
+          <h1 style={{ fontSize: 18 }}>完整名單</h1>
           <div className="meta-row">
-            📅 {dateStr} · {session.start_time.slice(0, 5)}{session.end_time ? ` ~ ${session.end_time.slice(0, 5)}` : ''} · {session.location}
+            📅 {dateStr} · {session.start_time.slice(0, 5)}{session.end_time ? ` ~ ${session.end_time.slice(0, 5)}` : ''}
           </div>
         </div>
       </div>
 
-      {/* Summary badges */}
       <div className="card">
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="badges">
           <span className="badge badge-green">出席 {roster.length}/{session.capacity}</span>
           <span className="badge badge-red">請假 {absent.length}</span>
           <span className="badge badge-yellow">候補 {waitlist.length}</span>
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="tabs">
-        <button
-          className={`tab ${activeTab === 'roster' ? 'active' : ''}`}
-          onClick={() => setActiveTab('roster')}
-        >
-          出席 ({roster.length})
-        </button>
-        <button
-          className={`tab ${activeTab === 'absent' ? 'active' : ''}`}
-          onClick={() => setActiveTab('absent')}
-        >
-          請假 ({absent.length})
-        </button>
-        <button
-          className={`tab ${activeTab === 'waitlist' ? 'active' : ''}`}
-          onClick={() => setActiveTab('waitlist')}
-        >
-          候補 ({waitlist.length})
-        </button>
+        {(['roster', 'absent', 'waitlist'] as Tab[]).map((tab) => (
+          <button
+            key={tab}
+            className={`tab ${activeTab === tab ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab === 'roster' ? `出席 (${roster.length})` : tab === 'absent' ? `請假 (${absent.length})` : `候補 (${waitlist.length})`}
+          </button>
+        ))}
       </div>
 
-      {/* Player list */}
       <div className="card">
         {currentList.length === 0 ? (
           <p className="empty">
@@ -121,17 +115,19 @@ export default function StatusPage() {
         ) : (
           currentList.map((p, i) => (
             <div className="player-row" key={p.id}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: '#6b7280', fontSize: 13, minWidth: 20 }}>{i + 1}</span>
-                <span style={{ fontSize: 15 }}>
+              <div className={`player-avatar player-avatar-${color}`}>
+                {p.name.slice(0, 1).toUpperCase()}
+              </div>
+              <div className="player-info">
+                <span className="player-name">
                   {p.name}
                   {p.line_user_id === profile?.userId && (
-                    <span style={{ color: '#06c755', marginLeft: 6, fontSize: 12 }}>（我）</span>
+                    <span className="player-me">（我）</span>
                   )}
                 </span>
               </div>
               {activeTab === 'waitlist' && (
-                <span className="badge badge-yellow">#{i + 1}</span>
+                <span className="player-rank">#{i + 1}</span>
               )}
             </div>
           ))
