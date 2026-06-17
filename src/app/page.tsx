@@ -317,7 +317,7 @@ export default function SessionPage() {
     <div className="container">
       {/* Hero info card */}
       <div className="card-accent">
-        <h1>🏸 羽球場次</h1>
+        <h1>🏸 濱江國中羽球團</h1>
         <div className="meta-row">📅 {dateStr}</div>
         <div className="meta-row">
           📍{" "}
