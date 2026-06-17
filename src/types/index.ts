@@ -14,7 +14,7 @@ export interface Session {
   capacity: number
   regular_count: number
   start_time: string
-  end_time: string
+  end_time: string | null
   location: string
   created_at: string
 }

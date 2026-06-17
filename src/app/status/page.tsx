@@ -73,7 +73,7 @@ export default function StatusPage() {
         <div>
           <h1>完整名單</h1>
           <div className="meta-row">
-            📅 {dateStr} · {session.start_time.slice(0, 5)} ~ {session.end_time.slice(0, 5)} · {session.location}
+            📅 {dateStr} · {session.start_time.slice(0, 5)}{session.end_time ? ` ~ ${session.end_time.slice(0, 5)}` : ''} · {session.location}
           </div>
         </div>
       </div>
