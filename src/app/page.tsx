@@ -123,7 +123,7 @@ export default function SessionPage() {
             session.location
           )}
         </div>
-        <div className="meta-row">🕗 {session.start_time.slice(0, 5)}</div>
+        <div className="meta-row">🕗 {session.start_time.slice(0, 5)} ~ {session.end_time.slice(0, 5)}</div>
 
         <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
           <span className="badge badge-green">出席 {regular_count - absent.length}/{regular_count}</span>

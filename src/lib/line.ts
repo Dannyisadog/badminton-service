@@ -40,7 +40,7 @@ export function buildSessionSummary(status: SessionStatus): string {
     ``,
     `📅 日期：${dateStr}`,
     `📍 地點：${session.location}`,
-    `🕗 時間：${session.start_time.slice(0, 5)}`,
+    `🕗 時間：${session.start_time.slice(0, 5)} ~ ${session.end_time.slice(0, 5)}`,
     ``,
     `固定成員：${session.regular_count} 人`,
     `請假 (${absent.length})：${absentNames}`,

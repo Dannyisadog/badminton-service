@@ -43,6 +43,7 @@ export async function GET() {
       capacity: 24,
       regular_count: 24,
       start_time: '19:00:00',
+      end_time: '21:00:00',
       location: 'https://maps.app.goo.gl/uvrTdwJoDpj9xkev8',
     })
     .select()
