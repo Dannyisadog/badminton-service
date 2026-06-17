@@ -113,7 +113,16 @@ export default function SessionPage() {
       <div className="card">
         <h1>🏸 羽球場次</h1>
         <div className="meta-row">📅 {dateStr}</div>
-        <div className="meta-row">📍 {session.location}</div>
+        <div className="meta-row">
+          📍{' '}
+          {session.location.startsWith('http') ? (
+            <a href={session.location} target="_blank" rel="noopener noreferrer" style={{ color: '#06c755' }}>
+              查看地圖
+            </a>
+          ) : (
+            session.location
+          )}
+        </div>
         <div className="meta-row">🕗 {session.start_time.slice(0, 5)}</div>
 
         <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
