@@ -27,12 +27,14 @@ export function verifySignature(rawBody: string, signature: string): boolean {
 }
 
 export function buildSessionSummary(status: SessionStatus): string {
-  const { session, roster, absent, waitlist } = status
+  const { session, roster, absent, waitlist, available_slots } = status
   const dateStr = new Date(session.date).toLocaleDateString('zh-TW', {
     month: 'numeric',
     day: 'numeric',
     weekday: 'short',
   })
+  const absentNames = absent.map((p) => p.name).join('、') || '無'
+  const rosterNames = roster.map((p) => p.name).join('、') || '無'
   return [
     `🏸 羽球場次提醒`,
     ``,
@@ -40,42 +42,64 @@ export function buildSessionSummary(status: SessionStatus): string {
     `📍 地點：${session.location}`,
     `🕗 時間：${session.start_time.slice(0, 5)}`,
     ``,
-    `出席：${roster.length}/${session.capacity}`,
-    `請假：${absent.length}`,
-    `候補：${waitlist.length}`,
+    `固定成員：${session.regular_count} 人`,
+    `請假 (${absent.length})：${absentNames}`,
+    `代打 (${roster.length})：${rosterNames}`,
+    `候補：${waitlist.length} 人`,
+    `可報名：${available_slots} 個`,
     ``,
-    `出席 / 請假 / 候補：`,
-    `${process.env.NEXT_PUBLIC_APP_URL}`,
+    `詳細名單：${process.env.NEXT_PUBLIC_APP_URL}`,
   ].join('\n')
+}
+
+export function buildAbsentNotification(
+  leaverName: string,
+  promotedName: string | null,
+  availableSlots: number
+): string {
+  const lines = [`🔔 出席更新`, ``, `${leaverName} 已請假`]
+  if (promotedName) {
+    lines.push(`✅ ${promotedName} 從候補升為代打！`)
+  } else if (availableSlots > 0) {
+    lines.push(`目前有 ${availableSlots} 個代打名額`)
+  }
+  return lines.join('\n')
+}
+
+export function buildCancelAbsentNotification(
+  playerName: string,
+  newStatus: 'back' | 'waitlist'
+): string {
+  if (newStatus === 'back') {
+    return `🔔 ${playerName} 取消請假，已回歸出席`
+  }
+  return `🔔 ${playerName} 取消請假，代打名額已滿，加入候補名單`
 }
 
 export function buildLeaveNotification(
   leaverName: string,
   promotedName: string | null,
-  roster: number,
-  capacity: number
+  availableSlots: number
 ): string {
-  const lines = [`🔔 出席更新`, ``, `${leaverName} 已請假`]
-  if (promotedName) lines.push(`${promotedName} 從候補晉升為出席！`)
-  lines.push(``, `目前出席：${roster}/${capacity}`)
+  const lines = [`🔔 出席更新`, ``, `${leaverName} 取消代打`]
+  if (promotedName) lines.push(`✅ ${promotedName} 從候補升為代打！`)
+  else if (availableSlots > 0) lines.push(`目前有 ${availableSlots} 個代打名額`)
   return lines.join('\n')
 }
 
 export function buildJoinNotification(
   playerName: string,
   status: 'roster' | 'waitlist',
-  roster: number,
-  capacity: number,
   waitlistPosition?: number
 ): string {
   if (status === 'waitlist') {
     return `🔔 ${playerName} 加入候補名單（第 ${waitlistPosition} 位）`
   }
-  return [`🔔 出席更新`, ``, `${playerName} 加入出席`, ``, `目前出席：${roster}/${capacity}`].join('\n')
+  return `🔔 ${playerName} 加入代打名單`
 }
 
 export function buildPromotionNotification(playerName: string): string {
-  return `🎉 ${playerName}，您已從候補晉升為出席！`
+  return `🎉 ${playerName}，您已從候補升為代打！`
 }
 
 export async function notifyGroups(

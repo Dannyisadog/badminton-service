@@ -12,6 +12,7 @@ export interface Session {
   date: string
   day_of_week: 'Mon' | 'Fri'
   capacity: number
+  regular_count: number
   start_time: string
   location: string
   created_at: string
@@ -40,6 +41,7 @@ export interface Group {
 
 export interface SessionStatus {
   session: Session
+  regular_count: number
   roster: PlayerWithStatus[]
   absent: PlayerWithStatus[]
   waitlist: PlayerWithStatus[]

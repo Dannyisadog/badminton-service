@@ -41,12 +41,15 @@ export async function GET(req: NextRequest) {
     joined_at: r.created_at,
   })
 
+  const absent = typedRows.filter((r) => r.status === 'absent').map(toEntry)
+  const roster = typedRows.filter((r) => r.status === 'roster').map(toEntry)
   const status: SessionStatus = {
     session,
-    roster: typedRows.filter((r) => r.status === 'roster').map(toEntry),
-    absent: typedRows.filter((r) => r.status === 'absent').map(toEntry),
+    regular_count: session.regular_count,
+    roster,
+    absent,
     waitlist: typedRows.filter((r) => r.status === 'waitlist').map(toEntry),
-    available_slots: session.capacity - typedRows.filter((r) => r.status === 'roster').length,
+    available_slots: Math.max(0, absent.length - roster.length),
   }
 
   // Get all groups linked to this session

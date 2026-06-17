@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { verifyLineIdToken, extractBearerToken } from '@/lib/auth'
 import { recalculate } from '@/lib/recalculate'
-import { notifyGroups, buildJoinNotification } from '@/lib/line'
+import { notifyGroups, buildAbsentNotification } from '@/lib/line'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,33 +16,41 @@ export async function POST(req: NextRequest) {
   const { session_id } = await req.json()
   if (!session_id) return NextResponse.json({ error: 'Missing session_id' }, { status: 400 })
 
-  // Get session capacity
-  const { data: session, error: sessionErr } = await supabaseAdmin
+  const { data: session } = await supabaseAdmin
     .from('sessions')
-    .select('*')
+    .select('id')
     .eq('id', session_id)
     .single()
-
-  if (sessionErr || !session) {
-    return NextResponse.json({ error: 'Session not found' }, { status: 404 })
-  }
+  if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 })
 
   // Get or create player
   let player = await getOrCreatePlayer(lineUserId)
 
-  // Check existing session_player record
+  // Check existing record
   const { data: existing } = await supabaseAdmin
     .from('session_players')
-    .select('*')
+    .select('status')
     .eq('session_id', session_id)
     .eq('player_id', player.id)
     .single()
 
-  if (existing && existing.status !== 'absent') {
-    return NextResponse.json({ success: true, status: existing.status })
+  if (existing?.status === 'absent') {
+    return NextResponse.json({ success: true, already_absent: true })
   }
 
-  // Open slots = absent count - roster count (substitutes already filled in)
+  // Upsert as absent
+  const { error } = await supabaseAdmin
+    .from('session_players')
+    .upsert(
+      { session_id, player_id: player.id, status: 'absent' },
+      { onConflict: 'session_id,player_id' }
+    )
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Promote waitlist if any
+  const { promoted } = await recalculate(session_id)
+  const promotedPlayer = promoted[0] ?? null
+
   const { count: absentCount } = await supabaseAdmin
     .from('session_players')
     .select('*', { count: 'exact', head: true })
@@ -55,36 +63,15 @@ export async function POST(req: NextRequest) {
     .eq('session_id', session_id)
     .eq('status', 'roster')
 
-  const openSlots = (absentCount ?? 0) - (rosterCount ?? 0)
-  const status = openSlots > 0 ? 'roster' : 'waitlist'
-
-  const { error: upsertErr } = await supabaseAdmin
-    .from('session_players')
-    .upsert(
-      { session_id, player_id: player.id, status },
-      { onConflict: 'session_id,player_id' }
-    )
-
-  if (upsertErr) return NextResponse.json({ error: upsertErr.message }, { status: 500 })
-
-  // Get waitlist position if needed
-  let waitlistPosition: number | undefined
-  if (status === 'waitlist') {
-    const { count } = await supabaseAdmin
-      .from('session_players')
-      .select('*', { count: 'exact', head: true })
-      .eq('session_id', session_id)
-      .eq('status', 'waitlist')
-    waitlistPosition = count ?? 1
-  }
+  const availableSlots = Math.max(0, (absentCount ?? 0) - (rosterCount ?? 0))
 
   const groups = await getGroupIds(session_id)
   if (groups.length > 0) {
-    const msg = buildJoinNotification(player.name, status, waitlistPosition)
+    const msg = buildAbsentNotification(player.name, promotedPlayer?.name ?? null, availableSlots)
     await notifyGroups(groups, msg).catch(console.error)
   }
 
-  return NextResponse.json({ success: true, status })
+  return NextResponse.json({ success: true, promoted_player: promotedPlayer })
 }
 
 async function getOrCreatePlayer(lineUserId: string) {
@@ -93,10 +80,8 @@ async function getOrCreatePlayer(lineUserId: string) {
     .select('*')
     .eq('line_user_id', lineUserId)
     .single()
-
   if (existing) return existing
 
-  // Fetch display name from LINE
   const profileRes = await fetch('https://api.line.me/v2/profile', {
     headers: { Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
   })
@@ -108,7 +93,6 @@ async function getOrCreatePlayer(lineUserId: string) {
     .insert({ line_user_id: lineUserId, name })
     .select()
     .single()
-
   return created!
 }
 

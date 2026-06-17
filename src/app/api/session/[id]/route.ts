@@ -46,10 +46,11 @@ export async function GET(
 
   const result: SessionStatus = {
     session,
+    regular_count: session.regular_count,
     roster,
     absent,
     waitlist,
-    available_slots: session.capacity - roster.length,
+    available_slots: Math.max(0, absent.length - roster.length),
   }
 
   return NextResponse.json(result)

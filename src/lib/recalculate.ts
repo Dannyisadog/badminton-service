@@ -7,16 +7,15 @@ export interface RecalculateResult {
 }
 
 export async function recalculate(sessionId: string): Promise<RecalculateResult> {
-  // Get session capacity
-  const { data: session, error: sessionErr } = await supabaseAdmin
-    .from('sessions')
-    .select('capacity')
-    .eq('id', sessionId)
-    .single()
+  // Open slots = absent regulars not yet filled by substitutes
+  const { count: absentCount, error: absentErr } = await supabaseAdmin
+    .from('session_players')
+    .select('*', { count: 'exact', head: true })
+    .eq('session_id', sessionId)
+    .eq('status', 'absent')
 
-  if (sessionErr || !session) throw new Error('Session not found')
+  if (absentErr) throw absentErr
 
-  // Count current roster
   const { count: rosterCount, error: countErr } = await supabaseAdmin
     .from('session_players')
     .select('*', { count: 'exact', head: true })
@@ -25,7 +24,7 @@ export async function recalculate(sessionId: string): Promise<RecalculateResult>
 
   if (countErr) throw countErr
 
-  const openSlots = session.capacity - (rosterCount ?? 0)
+  const openSlots = (absentCount ?? 0) - (rosterCount ?? 0)
   if (openSlots <= 0) return { promoted: [] }
 
   // Get waitlist in FIFO order
