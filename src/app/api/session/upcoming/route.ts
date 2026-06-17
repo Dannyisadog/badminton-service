@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getNextSessionDate } from '@/lib/schedule'
-import type { SessionStatus, SessionPlayerWithPlayer } from '@/types'
+import type { SessionStatus, PlayerWithStatus } from '@/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,29 +36,37 @@ export async function GET() {
   }
 
   // Fetch session players
-  const { data: rows, error: rowsErr } = await supabaseAdmin
+  const { data: spRows, error: spErr } = await supabaseAdmin
     .from('session_players')
-    .select('*, players(*)')
+    .select('id, session_id, player_id, status, created_at')
     .eq('session_id', session.id)
     .order('created_at', { ascending: true })
 
-  if (rowsErr) {
-    return NextResponse.json({ error: rowsErr.message }, { status: 500 })
+  if (spErr) {
+    return NextResponse.json({ error: spErr.message }, { status: 500 })
   }
 
-  console.log('session_players rows:', JSON.stringify(rows))
-  const typedRows = (rows ?? []) as SessionPlayerWithPlayer[]
-  const toEntry = (r: SessionPlayerWithPlayer) => ({
-    id: r.players.id,
-    name: r.players.name,
-    line_user_id: r.players.line_user_id,
-    status: r.status,
-    joined_at: r.created_at,
-  })
+  const playerIds = (spRows ?? []).map((r) => r.player_id)
 
-  const absent = typedRows.filter((r) => r.status === 'absent').map(toEntry)
-  const roster = typedRows.filter((r) => r.status === 'roster').map(toEntry)
-  const waitlist = typedRows.filter((r) => r.status === 'waitlist').map(toEntry)
+  let playersMap: Record<string, { id: string; name: string; line_user_id: string }> = {}
+  if (playerIds.length > 0) {
+    const { data: playersData } = await supabaseAdmin
+      .from('players')
+      .select('id, name, line_user_id')
+      .in('id', playerIds)
+    for (const p of playersData ?? []) {
+      playersMap[p.id] = p
+    }
+  }
+
+  const toEntry = (r: { player_id: string; status: string; created_at: string }) => {
+    const p = playersMap[r.player_id]
+    return p ? { id: p.id, name: p.name, line_user_id: p.line_user_id, status: r.status, joined_at: r.created_at } : null
+  }
+
+  const absent = (spRows ?? []).filter((r) => r.status === 'absent').map(toEntry).filter(Boolean) as PlayerWithStatus[]
+  const roster = (spRows ?? []).filter((r) => r.status === 'roster').map(toEntry).filter(Boolean) as PlayerWithStatus[]
+  const waitlist = (spRows ?? []).filter((r) => r.status === 'waitlist').map(toEntry).filter(Boolean) as PlayerWithStatus[]
 
   const result: SessionStatus = {
     session,
