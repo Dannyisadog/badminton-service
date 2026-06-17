@@ -159,9 +159,6 @@ export default function SessionPage() {
           {waitlist.length > 0 && (
             <span className="badge badge-yellow">候補 {waitlist.length}</span>
           )}
-          {myStatus && (
-            <span className={`badge ${statusBadge(myStatus)}`}>{statusLabel(myStatus)}</span>
-          )}
         </div>
       </div>
 
@@ -270,15 +267,6 @@ export default function SessionPage() {
   )
 }
 
-function statusLabel(status: PlayerStatus): string {
-  const map: Record<PlayerStatus, string> = { roster: '出席', absent: '請假', waitlist: '候補' }
-  return map[status]
-}
-
-function statusBadge(status: PlayerStatus): string {
-  const map: Record<PlayerStatus, string> = { roster: 'badge-green', absent: 'badge-red', waitlist: 'badge-yellow' }
-  return map[status]
-}
 
 function getSuccessMessage(endpoint: string, data: Record<string, unknown>): string {
   if (endpoint === '/api/join') {
