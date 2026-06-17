@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { verifyLineAccessToken, extractBearerToken } from '@/lib/auth'
 import { notifyGroups, buildCancelAbsentNotification } from '@/lib/line'
 import { getGroupIds } from '@/lib/groups'
+import { recalculate } from '@/lib/recalculate'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,33 +43,46 @@ export async function POST(req: NextRequest) {
   const absentCount = absentResult.count ?? 0
   const rosterCount = rosterResult.count ?? 0
 
-  // Slots remaining after A cancels = (absent - 1) - roster
-  // If >= 0: A can come back directly (there's still an unfilled absence slot)
-  // If < 0: all slots are taken by substitutes — A joins waitlist instead
-  const remainingSlots = (absentCount - 1) - rosterCount
-  const newStatus: 'back' | 'waitlist' = remainingSlots >= 0 ? 'back' : 'waitlist'
+  // B always comes back as a regular player — delete absent record
+  await supabaseAdmin
+    .from('session_players')
+    .delete()
+    .eq('session_id', session_id)
+    .eq('player_id', player.id)
 
-  if (newStatus === 'back') {
-    // Room available — delete absent record, A returns as regular
-    await supabaseAdmin
+  // remainingSlots = slots still available after B returns
+  // (absent - 1) = remaining absences, roster = substitutes currently active
+  // If negative, there are more substitutes than remaining absent slots → overflow
+  const remainingSlots = (absentCount - 1) - rosterCount
+
+  if (remainingSlots < 0) {
+    // ACTIVE would be 25 — demote the newest substitute back to waitlist
+    const { data: newestRoster } = await supabaseAdmin
       .from('session_players')
-      .delete()
+      .select('id')
       .eq('session_id', session_id)
-      .eq('player_id', player.id)
-  } else {
-    // No room — B keeps their spot, A joins waitlist
-    await supabaseAdmin
-      .from('session_players')
-      .update({ status: 'waitlist' })
-      .eq('session_id', session_id)
-      .eq('player_id', player.id)
+      .eq('status', 'roster')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (newestRoster) {
+      await supabaseAdmin
+        .from('session_players')
+        .update({ status: 'waitlist' })
+        .eq('id', newestRoster.id)
+    }
+  } else if (remainingSlots > 0) {
+    // Open slots exist — try to fill from waitlist
+    await recalculate(session_id)
   }
 
   const groups = await getGroupIds()
   if (groups.length > 0) {
-    const msg = buildCancelAbsentNotification(player.name, newStatus)
+    // B always comes back as regular
+    const msg = buildCancelAbsentNotification(player.name, 'back')
     notifyGroups(groups, msg).catch(console.error)
   }
 
-  return NextResponse.json({ success: true, status: newStatus })
+  return NextResponse.json({ success: true, status: 'back' })
 }
