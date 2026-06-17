@@ -40,6 +40,7 @@ export default function SessionPage() {
       }
       const data = await res.json()
       if (data.error) throw new Error(data.error)
+      console.log('fetchSession got waitlist:', data.waitlist?.length, 'absent:', data.absent?.length)
       setSessionData(data)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
