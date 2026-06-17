@@ -14,7 +14,7 @@ interface SessionData {
 }
 
 export default function SessionPage() {
-  const { isReady, profile, idToken, error: liffError } = useLiff()
+  const { isReady, profile, getIdToken, error: liffError } = useLiff()
   const [sessionData, setSessionData] = useState<SessionData | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
@@ -58,6 +58,7 @@ export default function SessionPage() {
   }, [isReady, fetchSession])
 
   const callApi = async (endpoint: string) => {
+    const idToken = getIdToken()
     if (!idToken || !sessionData) return
     setActionLoading(true)
     setMessage(null)
