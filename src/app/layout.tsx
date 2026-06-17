@@ -4,19 +4,19 @@ import './globals.css'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://badminton-service.dannyisadog.com'
 
 export const metadata: Metadata = {
-  title: '羽球場次管理',
-  description: '羽球場次出席、請假、候補管理系統',
+  title: '濱江國中羽球團',
+  description: '濱江國中羽球團',
   openGraph: {
-    title: '羽球場次管理',
-    description: '羽球場次出席、請假、候補管理系統',
+    title: '濱江國中羽球團',
+    description: '濱江國中羽球團',
     url: APP_URL,
-    siteName: '羽球場次管理',
+    siteName: '濱江國中羽球團',
     images: [
       {
         url: `${APP_URL}/badminton.png`,
         width: 512,
         height: 512,
-        alt: '羽球場次管理',
+        alt: '濱江國中羽球團',
       },
     ],
     locale: 'zh_TW',
@@ -24,8 +24,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary',
-    title: '羽球場次管理',
-    description: '羽球場次出席、請假、候補管理系統',
+    title: '濱江國中羽球團',
+    description: '濱江國中羽球團',
     images: [`${APP_URL}/badminton.png`],
   },
 }
