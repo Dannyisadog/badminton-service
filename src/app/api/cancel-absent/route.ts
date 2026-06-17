@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { verifyLineAccessToken, extractBearerToken } from '@/lib/auth'
 import { notifyGroups, buildCancelAbsentNotification } from '@/lib/line'
+import { getGroupIds } from '@/lib/groups'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Not currently absent' }, { status: 400 })
   }
 
-  // Check if their slot is still available
+  // Check if slot is still open
   const { count: absentCount } = await supabaseAdmin
     .from('session_players')
     .select('*', { count: 'exact', head: true })
@@ -48,39 +49,39 @@ export async function POST(req: NextRequest) {
 
   const openSlots = (absentCount ?? 0) - (rosterCount ?? 0)
 
-  let newStatus: 'back' | 'waitlist'
+  // Always delete the absent record — the regular player is back
+  await supabaseAdmin
+    .from('session_players')
+    .delete()
+    .eq('session_id', session_id)
+    .eq('player_id', player.id)
 
-  if (openSlots > 0) {
-    // Slot still open — just come back (delete absent record)
-    await supabaseAdmin
+  let newStatus: 'back' | 'waitlist' = 'back'
+
+  if (openSlots <= 0) {
+    // Slot was filled by a substitute — bump the most recently added roster player back to waitlist
+    const { data: lastRoster } = await supabaseAdmin
       .from('session_players')
-      .delete()
+      .select('id')
       .eq('session_id', session_id)
-      .eq('player_id', player.id)
-    newStatus = 'back'
-  } else {
-    // Slot taken — join waitlist
-    await supabaseAdmin
-      .from('session_players')
-      .update({ status: 'waitlist' })
-      .eq('session_id', session_id)
-      .eq('player_id', player.id)
-    newStatus = 'waitlist'
+      .eq('status', 'roster')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (lastRoster) {
+      await supabaseAdmin
+        .from('session_players')
+        .update({ status: 'waitlist' })
+        .eq('id', lastRoster.id)
+    }
   }
 
-  const groups = await getGroupIds(session_id)
+  const groups = await getGroupIds()
   if (groups.length > 0) {
     const msg = buildCancelAbsentNotification(player.name, newStatus)
-    await notifyGroups(groups, msg).catch(console.error)
+    notifyGroups(groups, msg).catch(console.error)
   }
 
   return NextResponse.json({ success: true, status: newStatus })
-}
-
-async function getGroupIds(sessionId: string): Promise<string[]> {
-  const { data } = await supabaseAdmin
-    .from('groups')
-    .select('line_group_id')
-    .eq('session_id', sessionId)
-  return (data ?? []).map((g: { line_group_id: string }) => g.line_group_id)
 }
