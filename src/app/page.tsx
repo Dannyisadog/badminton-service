@@ -19,6 +19,7 @@ export default function SessionPage() {
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const myStatus: PlayerStatus | null = sessionData
     ? (() => {
@@ -43,7 +44,9 @@ export default function SessionPage() {
       if (data.error) throw new Error(data.error)
       setSessionData(data)
     } catch (err) {
-      console.error(err)
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error(msg)
+      setLoadError(msg)
     } finally {
       setLoading(false)
     }
@@ -96,7 +99,14 @@ export default function SessionPage() {
   if (!sessionData) {
     return (
       <div className="container">
-        <div className="loading">找不到即將到來的場次</div>
+        <div className="loading">
+          找不到即將到來的場次
+          {loadError && (
+            <div style={{ marginTop: 8, fontSize: 12, color: '#991b1b', wordBreak: 'break-all' }}>
+              {loadError}
+            </div>
+          )}
+        </div>
       </div>
     )
   }
