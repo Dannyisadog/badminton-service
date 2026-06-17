@@ -1,19 +1,16 @@
-export async function verifyLineIdToken(token: string): Promise<string | null> {
-  const channelId = process.env.LIFF_CHANNEL_ID
-  if (!channelId) throw new Error('LIFF_CHANNEL_ID not set')
-
-  const res = await fetch('https://api.line.me/oauth2/v2.1/verify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ id_token: token, client_id: channelId }),
+export async function verifyLineAccessToken(token: string): Promise<string | null> {
+  const res = await fetch('https://api.line.me/v2/profile', {
+    headers: { Authorization: `Bearer ${token}` },
   })
 
-  const data = await res.json()
   if (!res.ok) {
-    console.error('LINE token verify failed:', res.status, JSON.stringify(data))
+    const data = await res.json().catch(() => ({}))
+    console.error('LINE access token verify failed:', res.status, JSON.stringify(data))
     return null
   }
-  return data.sub as string
+
+  const data = await res.json()
+  return data.userId as string
 }
 
 export function extractBearerToken(authHeader: string | null): string | null {

@@ -11,7 +11,7 @@ interface LiffProfile {
 interface UseLiffResult {
   isReady: boolean
   profile: LiffProfile | null
-  getIdToken: () => string | null
+  getAccessToken: () => string | null
   error: Error | null
 }
 
@@ -44,7 +44,7 @@ export function useLiff(): UseLiffResult {
     init()
   }, [])
 
-  const getIdToken = () => liffInstance?.getIDToken() ?? null
+  const getAccessToken = () => liffInstance?.getAccessToken() ?? null
 
-  return { isReady, profile, getIdToken, error }
+  return { isReady, profile, getAccessToken, error }
 }

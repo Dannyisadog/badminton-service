@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { verifyLineIdToken, extractBearerToken } from '@/lib/auth'
+import { verifyLineAccessToken, extractBearerToken } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   const token = extractBearerToken(req.headers.get('Authorization'))
   if (!token) return NextResponse.json({ error: 'Missing token' }, { status: 401 })
 
-  const lineUserId = await verifyLineIdToken(token)
+  const lineUserId = await verifyLineAccessToken(token)
   if (!lineUserId) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
 
   const { session_id } = await req.json()
