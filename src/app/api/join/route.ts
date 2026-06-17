@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { verifyLineAccessToken, extractBearerToken } from '@/lib/auth'
 import { getOrCreatePlayer } from '@/lib/player'
 import { notifyGroups, buildJoinNotification } from '@/lib/line'
+import { getGroupIds } from '@/lib/groups'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +14,6 @@ export async function POST(req: NextRequest) {
   const { session_id } = await req.json()
   if (!session_id) return NextResponse.json({ error: 'Missing session_id' }, { status: 400 })
 
-  // Verify token and fetch session in parallel
   const [lineUserId, sessionResult] = await Promise.all([
     verifyLineAccessToken(token),
     supabaseAdmin.from('sessions').select('id').eq('id', session_id).single(),
@@ -35,7 +35,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, status: existing.status })
   }
 
-  // Fetch absent and roster counts in parallel
   const [absentResult, rosterResult] = await Promise.all([
     supabaseAdmin.from('session_players').select('*', { count: 'exact', head: true }).eq('session_id', session_id).eq('status', 'absent'),
     supabaseAdmin.from('session_players').select('*', { count: 'exact', head: true }).eq('session_id', session_id).eq('status', 'roster'),
@@ -54,7 +53,7 @@ export async function POST(req: NextRequest) {
     status === 'waitlist'
       ? supabaseAdmin.from('session_players').select('*', { count: 'exact', head: true }).eq('session_id', session_id).eq('status', 'waitlist')
       : Promise.resolve({ count: undefined }),
-    getGroupIds(session_id),
+    getGroupIds(),
   ])
 
   if (groups.length > 0) {
@@ -63,9 +62,4 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ success: true, status })
-}
-
-async function getGroupIds(sessionId: string): Promise<string[]> {
-  const { data } = await supabaseAdmin.from('groups').select('line_group_id').eq('session_id', sessionId)
-  return (data ?? []).map((g: { line_group_id: string }) => g.line_group_id)
 }
