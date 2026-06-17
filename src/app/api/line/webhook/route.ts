@@ -72,6 +72,11 @@ async function handleTextMessage(event: LineEvent) {
   const userId = event.source.userId
   if (!userId) return
 
+  // Auto-register group if message comes from a group (fallback for missed join events)
+  if (event.source.groupId) {
+    await handleGroupJoin(event.source.groupId)
+  }
+
   // Simple command handling — full interaction is via LIFF
   if (text === 'status' || text === '狀態') {
     await replyStatus(event.replyToken!, event.source.groupId)
