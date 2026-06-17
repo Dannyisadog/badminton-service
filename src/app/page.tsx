@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { UserPlus, Users, CheckCircle, CalendarMinus, RotateCcw, X, LogOut, Clock } from 'lucide-react'
 import { useLiff } from '@/hooks/useLiff'
 import type { Session, PlayerWithStatus, PlayerStatus } from '@/types'
 
@@ -149,6 +150,24 @@ export default function SessionPage() {
     myStatus === 'waitlist' ? '取消候補' :
     myStatus === 'roster' ? '取消代打' : '請假'
 
+  const primaryIcon = myStatus === 'roster'
+    ? <CheckCircle size={16} />
+    : available_slots === 0
+      ? <Users size={16} />
+      : <UserPlus size={16} />
+
+  const dangerIcon = redLabel === '取消請假'
+    ? <RotateCcw size={16} />
+    : redLabel === '取消候補'
+      ? <X size={16} />
+      : redLabel === '取消代打'
+        ? <LogOut size={16} />
+        : <CalendarMinus size={16} />
+
+  const accentIcon = myStatus === 'waitlist'
+    ? <CheckCircle size={16} />
+    : <Clock size={16} />
+
   return (
     <div className="container">
       {/* Hero info card */}
@@ -189,15 +208,15 @@ export default function SessionPage() {
             disabled={isLoading || myStatus !== null || available_slots === 0}
             onClick={() => callApi('/api/join')}
           >
-            {loadingAction === '/api/join' && <span className="spinner" />}
-            {myStatus === 'roster' ? '✓ 已出席' : available_slots === 0 ? '名額已滿' : '加入出席'}
+            {loadingAction === '/api/join' ? <span className="spinner" /> : primaryIcon}
+            {myStatus === 'roster' ? '已出席' : available_slots === 0 ? '名額已滿' : '加入出席'}
           </button>
           <button
             className="btn btn-danger"
             disabled={isLoading}
             onClick={() => callApi(redAction)}
           >
-            {loadingAction === redAction && <span className="spinner" />}
+            {loadingAction === redAction ? <span className="spinner" /> : dangerIcon}
             {redLabel}
           </button>
           <button
@@ -205,8 +224,8 @@ export default function SessionPage() {
             disabled={isLoading || myStatus !== null || available_slots > 0}
             onClick={() => callApi('/api/waitlist')}
           >
-            {loadingAction === '/api/waitlist' && <span className="spinner" />}
-            {myStatus === 'waitlist' ? '✓ 已在候補名單' : '加入候補'}
+            {loadingAction === '/api/waitlist' ? <span className="spinner" /> : accentIcon}
+            {myStatus === 'waitlist' ? '已在候補名單' : '加入候補'}
           </button>
         </div>
       </div>
