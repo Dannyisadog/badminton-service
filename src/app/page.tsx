@@ -3,10 +3,10 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useLiff } from '@/hooks/useLiff'
 import type { Session, PlayerWithStatus, PlayerStatus } from '@/types'
-import Link from 'next/link'
 
 interface SessionData {
   session: Session
+  regular_count: number
   roster: PlayerWithStatus[]
   absent: PlayerWithStatus[]
   waitlist: PlayerWithStatus[]
@@ -98,7 +98,7 @@ export default function SessionPage() {
     )
   }
 
-  const { session, roster, waitlist } = sessionData
+  const { session, roster, absent, waitlist, regular_count, available_slots } = sessionData
   const dateObj = new Date(session.date + 'T00:00:00')
   const dateStr = dateObj.toLocaleDateString('zh-TW', {
     year: 'numeric',
@@ -117,7 +117,10 @@ export default function SessionPage() {
         <div className="meta-row">🕗 {session.start_time.slice(0, 5)}</div>
 
         <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-          <span className="badge badge-green">出席 {roster.length}/{session.capacity}</span>
+          <span className="badge badge-green">出席 {regular_count - absent.length}/{regular_count}</span>
+          {available_slots > 0 && (
+            <span className="badge badge-red">請假 {absent.length} 人，可報名 {available_slots} 個</span>
+          )}
           {waitlist.length > 0 && (
             <span className="badge badge-yellow">候補 {waitlist.length}</span>
           )}
@@ -155,9 +158,9 @@ export default function SessionPage() {
           <button
             className="btn btn-red"
             disabled={actionLoading || myStatus === 'absent'}
-            onClick={() => callApi('/api/leave')}
+            onClick={() => callApi(myStatus === 'absent' ? '/api/cancel-absent' : '/api/absent')}
           >
-            {myStatus === 'absent' ? '已請假' : '請假'}
+            {myStatus === 'absent' ? '取消請假' : '請假'}
           </button>
           <button
             className="btn btn-yellow"
@@ -165,7 +168,7 @@ export default function SessionPage() {
               actionLoading ||
               myStatus === 'waitlist' ||
               myStatus === 'roster' ||
-              session.capacity - roster.length > 0
+              available_slots > 0
             }
             onClick={() => callApi('/api/waitlist')}
           >
@@ -174,39 +177,6 @@ export default function SessionPage() {
         </div>
       </div>
 
-      {/* Quick roster preview */}
-      <div className="card">
-        <div
-          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-        >
-          <p className="section-title">出席名單</p>
-          <Link
-            href="/status"
-            style={{ fontSize: 13, color: '#06c755', textDecoration: 'none' }}
-          >
-            查看完整名單 →
-          </Link>
-        </div>
-        {roster.length === 0 ? (
-          <p className="empty">尚無人出席</p>
-        ) : (
-          roster.slice(0, 5).map((p, i) => (
-            <div className="player-row" key={p.id}>
-              <span style={{ fontSize: 14 }}>
-                {i + 1}. {p.name}
-                {p.line_user_id === profile?.userId && (
-                  <span style={{ color: '#06c755', marginLeft: 6, fontSize: 12 }}>（我）</span>
-                )}
-              </span>
-            </div>
-          ))
-        )}
-        {roster.length > 5 && (
-          <p style={{ fontSize: 13, color: '#6b7280', marginTop: 8 }}>
-            還有 {roster.length - 5} 人...
-          </p>
-        )}
-      </div>
     </div>
   )
 }
