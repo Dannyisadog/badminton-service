@@ -16,7 +16,7 @@ export async function GET() {
     .eq('date', dateStr)
     .single()
 
-  if (existing) return NextResponse.json(existing)
+  if (existing) return NextResponse.json(existing, { headers: { 'Cache-Control': 'no-store' } })
 
   const { data: created, error } = await supabaseAdmin
     .from('sessions')
@@ -34,5 +34,5 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json(created)
+  return NextResponse.json(created, { headers: { 'Cache-Control': 'no-store' } })
 }

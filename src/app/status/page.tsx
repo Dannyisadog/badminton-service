@@ -23,9 +23,9 @@ export default function StatusPage() {
 
   const fetchSession = useCallback(async () => {
     try {
-      const upcoming = await fetch('/api/session/upcoming').then((r) => r.json())
+      const upcoming = await fetch('/api/session/upcoming', { cache: 'no-store' }).then((r) => r.json())
       if (upcoming.error) throw new Error(upcoming.error)
-      const data = await fetch(`/api/session/${upcoming.id}`).then((r) => r.json())
+      const data = await fetch(`/api/session/${upcoming.id}`, { cache: 'no-store' }).then((r) => r.json())
       setSessionData(data)
     } catch (err) {
       console.error(err)

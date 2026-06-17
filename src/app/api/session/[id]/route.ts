@@ -53,5 +53,7 @@ export async function GET(
     available_slots: Math.max(0, absent.length - roster.length),
   }
 
-  return NextResponse.json(result)
+  return NextResponse.json(result, {
+    headers: { 'Cache-Control': 'no-store' },
+  })
 }
