@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   if (!token) return NextResponse.json({ error: 'Missing token' }, { status: 401 })
 
   const lineUserId = await verifyLineIdToken(token)
-  if (!lineUserId) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+  if (!lineUserId) return NextResponse.json({ error: `Invalid token (channel: ${process.env.LIFF_CHANNEL_ID})` }, { status: 401 })
 
   const { session_id } = await req.json()
   if (!session_id) return NextResponse.json({ error: 'Missing session_id' }, { status: 400 })

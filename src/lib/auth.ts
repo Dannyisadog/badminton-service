@@ -8,9 +8,12 @@ export async function verifyLineIdToken(token: string): Promise<string | null> {
     body: new URLSearchParams({ id_token: token, client_id: channelId }),
   })
 
-  if (!res.ok) return null
   const data = await res.json()
-  return data.sub as string // LINE user ID
+  if (!res.ok) {
+    console.error('LINE token verify failed:', res.status, JSON.stringify(data))
+    return null
+  }
+  return data.sub as string
 }
 
 export function extractBearerToken(authHeader: string | null): string | null {
