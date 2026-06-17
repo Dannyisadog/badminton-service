@@ -150,10 +150,10 @@ export default function SessionPage() {
         <div className="actions">
           <button
             className="btn btn-green"
-            disabled={actionLoading || myStatus === 'roster'}
+            disabled={actionLoading || myStatus === 'roster' || (myStatus === null && available_slots === 0)}
             onClick={() => callApi('/api/join')}
           >
-            {myStatus === 'roster' ? '已出席' : '加入出席'}
+            {myStatus === 'roster' ? '已出席' : available_slots === 0 && myStatus === null ? '名額已滿' : '加入出席'}
           </button>
           <button
             className="btn btn-red"
