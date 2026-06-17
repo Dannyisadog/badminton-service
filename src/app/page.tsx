@@ -287,7 +287,7 @@ export default function SessionPage() {
         : myStatus === "roster"
           ? "取消代打"
           : myStatus === "returning"
-            ? "放棄等位"
+            ? "放棄候補"
             : "請假";
 
   const primaryIcon =
