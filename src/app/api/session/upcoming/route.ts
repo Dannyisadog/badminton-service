@@ -40,7 +40,8 @@ export async function GET() {
     .insert({
       date: dateStr,
       day_of_week: dayOfWeekStr,
-      capacity: 16,
+      capacity: 24,
+      regular_count: 24,
       start_time: '19:00:00',
       location: 'TBD',
     })
