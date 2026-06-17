@@ -40,7 +40,8 @@ export async function recalculate(sessionId: string): Promise<RecalculateResult>
   if (waitlistErr) throw waitlistErr
   if (!waitlist || waitlist.length === 0) return { promoted: [] }
 
-  const toPromote = waitlist as Array<{ id: string; player_id: string; players: Player }>
+  type WaitlistRow = { id: string; player_id: string; players: Player | Player[] | null }
+  const toPromote = waitlist as unknown as WaitlistRow[]
 
   // Promote waitlist players
   const ids = toPromote.map((row) => row.id)
@@ -51,7 +52,9 @@ export async function recalculate(sessionId: string): Promise<RecalculateResult>
 
   if (updateErr) throw updateErr
 
-  const promotedPlayers = toPromote.map((row) => row.players)
+  const promotedPlayers = toPromote
+    .map((row) => (Array.isArray(row.players) ? row.players[0] : row.players))
+    .filter((p): p is Player => p != null)
 
   // Notify each promoted player via LINE DM
   await Promise.all(
