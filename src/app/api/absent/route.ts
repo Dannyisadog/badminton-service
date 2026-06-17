@@ -80,13 +80,20 @@ async function getOrCreatePlayer(lineUserId: string) {
     .select('*')
     .eq('line_user_id', lineUserId)
     .single()
-  if (existing) return existing
 
-  const profileRes = await fetch('https://api.line.me/v2/profile', {
+  const profileRes = await fetch(`https://api.line.me/v2/bot/profile/${lineUserId}`, {
     headers: { Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
   })
   const profile = profileRes.ok ? await profileRes.json() : null
   const name = profile?.displayName ?? `User-${lineUserId.slice(-4)}`
+
+  if (existing) {
+    if (existing.name.startsWith('User-') && name !== existing.name) {
+      await supabaseAdmin.from('players').update({ name }).eq('id', existing.id)
+      return { ...existing, name }
+    }
+    return existing
+  }
 
   const { data: created } = await supabaseAdmin
     .from('players')
