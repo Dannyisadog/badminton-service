@@ -1,1 +1,1 @@
-ALTER TABLE sessions ADD COLUMN regular_count INT NOT NULL DEFAULT 20;
+ALTER TABLE sessions ADD COLUMN regular_count INT NOT NULL DEFAULT 24;
