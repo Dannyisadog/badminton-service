@@ -37,11 +37,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, promoted_player: null })
   }
 
-  // Waitlist or returning: just remove from queue, no slot freed
-  if (sp.status === 'waitlist' || sp.status === 'returning') {
+  // Waitlist (substitute): just remove from queue, no slot freed
+  if (sp.status === 'waitlist') {
     await supabaseAdmin
       .from('session_players')
       .delete()
+      .eq('session_id', session_id)
+      .eq('player_id', player.id)
+    return NextResponse.json({ success: true, promoted_player: null })
+  }
+
+  // Returning (regular giving up their re-entry queue): go back to absent
+  // A (roster) keeps their slot; ACTIVE = 24 - 1(absent) - 0(returning) + 1(roster) = 24
+  if (sp.status === 'returning') {
+    await supabaseAdmin
+      .from('session_players')
+      .update({ status: 'absent' })
       .eq('session_id', session_id)
       .eq('player_id', player.id)
     return NextResponse.json({ success: true, promoted_player: null })
