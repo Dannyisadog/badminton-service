@@ -21,11 +21,17 @@
   --text-2: #71717a;
   --text-3: #a1a1aa;
 
-  --primary: #06c755;
-  --primary-hover: #05a843;
+  --primary: #16a34a;
+  --primary-hover: #15803d;
   --primary-fg: #ffffff;
   --primary-subtle: #f0fdf4;
   --primary-muted: #dcfce7;
+
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-fg: #ffffff;
+  --accent-subtle: #eef2ff;
+  --accent-muted: #c7d2fe;
 
   --success: #16a34a;
   --success-bg: #f0fdf4;
@@ -37,12 +43,12 @@
   --warning-border: #fde68a;
   --warning-text: #92400e;
 
-  --danger: #dc2626;
-  --danger-hover: #b91c1c;
+  --danger: #e11d48;
+  --danger-hover: #be123c;
   --danger-fg: #ffffff;
-  --danger-bg: #fef2f2;
-  --danger-border: #fecaca;
-  --danger-text: #991b1c;
+  --danger-bg: #fff1f2;
+  --danger-border: #fecdd3;
+  --danger-text: #9f1239;
 
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
   --shadow-md: 0 4px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);
@@ -69,11 +75,17 @@
   --text-2: #8b8b96;
   --text-3: #5c5c68;
 
-  --primary: #06c755;
-  --primary-hover: #05b84c;
+  --primary: #22c55e;
+  --primary-hover: #16a34a;
   --primary-fg: #ffffff;
-  --primary-subtle: rgba(6,199,85,0.08);
-  --primary-muted: rgba(6,199,85,0.15);
+  --primary-subtle: rgba(34,197,94,0.08);
+  --primary-muted: rgba(34,197,94,0.15);
+
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-fg: #ffffff;
+  --accent-subtle: rgba(99,102,241,0.08);
+  --accent-muted: rgba(99,102,241,0.18);
 
   --success: #22c55e;
   --success-bg: rgba(34,197,94,0.08);
@@ -85,12 +97,12 @@
   --warning-border: rgba(245,158,11,0.2);
   --warning-text: #fbbf24;
 
-  --danger: #ef4444;
-  --danger-hover: #dc2626;
+  --danger: #f43f5e;
+  --danger-hover: #e11d48;
   --danger-fg: #ffffff;
-  --danger-bg: rgba(239,68,68,0.08);
-  --danger-border: rgba(239,68,68,0.2);
-  --danger-text: #f87171;
+  --danger-bg: rgba(244,63,94,0.08);
+  --danger-border: rgba(244,63,94,0.2);
+  --danger-text: #fb7185;
 
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
   --shadow-md: 0 4px 14px rgba(0,0,0,0.5), 0 1px 4px rgba(0,0,0,0.3);
@@ -146,7 +158,7 @@ h2 {
   background: var(--surface);
   border-radius: var(--radius-xl);
   border: 1px solid var(--border);
-  border-top: 2px solid var(--primary);
+  border-top: 2px solid #06c755;
   box-shadow: var(--shadow-md);
   padding: 20px;
   margin-bottom: 12px;
@@ -190,27 +202,34 @@ h2 {
 .btn-primary {
   background: var(--primary);
   color: var(--primary-fg);
-  box-shadow: 0 4px 14px rgba(6,199,85,0.3);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08), 0 4px 12px rgba(22,163,74,0.2);
 }
 
 .btn-primary:not(:disabled):hover {
   background: var(--primary-hover);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1), 0 6px 16px rgba(22,163,74,0.25);
 }
 
 .btn-danger {
   background: var(--danger);
   color: var(--danger-fg);
-  box-shadow: 0 4px 14px rgba(239,68,68,0.25);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08), 0 4px 12px rgba(225,29,72,0.2);
 }
 
 .btn-danger:not(:disabled):hover {
   background: var(--danger-hover);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1), 0 6px 16px rgba(225,29,72,0.25);
 }
 
-.btn-warning {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: white;
-  box-shadow: 0 4px 14px rgba(245,158,11,0.25);
+.btn-accent {
+  background: var(--accent);
+  color: var(--accent-fg);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08), 0 4px 12px rgba(79,70,229,0.2);
+}
+
+.btn-accent:not(:disabled):hover {
+  background: var(--accent-hover);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1), 0 6px 16px rgba(79,70,229,0.25);
 }
 
 .btn-ghost {

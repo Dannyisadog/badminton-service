@@ -201,7 +201,7 @@ export default function SessionPage() {
             {redLabel}
           </button>
           <button
-            className="btn btn-warning"
+            className="btn btn-accent"
             disabled={isLoading || myStatus !== null || available_slots > 0}
             onClick={() => callApi('/api/waitlist')}
           >
