@@ -240,7 +240,7 @@ export default function SessionPage() {
               marginBottom: loadError ? 8 : 0,
             }}
           >
-            找不到即將到來的場次
+            找不到即將舉行的場次
           </p>
           {loadError && (
             <p
@@ -493,14 +493,14 @@ function getSuccessMessage(
   }
   if (endpoint === "/api/absent") {
     const promoted = data.promoted_player as { name: string } | null;
-    return promoted ? `請假成功，${promoted.name} 從候補晉升！` : "請假成功";
+    return promoted ? `請假成功，${promoted.name} 從候補遞補上來！` : "請假成功";
   }
   if (endpoint === "/api/cancel-absent") {
     return (data.status as string) === "waitlist"
       ? "取消請假，已加入候補名單"
-      : "取消請假，歡迎回來！";
+      : "取消請假成功，歡迎回來！";
   }
-  if (endpoint === "/api/leave") return "已取消";
+  if (endpoint === "/api/leave") return "取消成功";
   if (endpoint === "/api/waitlist") return "已加入候補名單";
   return "操作成功";
 }

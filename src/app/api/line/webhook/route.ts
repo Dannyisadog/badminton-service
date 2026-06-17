@@ -118,7 +118,7 @@ async function replyStatus(replyToken: string, groupId?: string) {
     `出席：${rosterCount ?? 0}/${session?.capacity ?? 16}`,
     `候補：${waitlistCount ?? 0}`,
     ``,
-    `管理出席：${process.env.NEXT_PUBLIC_APP_URL}`,
+    `出席管理：${process.env.NEXT_PUBLIC_APP_URL}`,
   ].join('\n')
 
   await lineReply(replyToken, msg)
