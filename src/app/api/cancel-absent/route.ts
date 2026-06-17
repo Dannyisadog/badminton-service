@@ -34,47 +34,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Not currently absent' }, { status: 400 })
   }
 
-  // Check if slot is still open
-  const { count: absentCount } = await supabaseAdmin
-    .from('session_players')
-    .select('*', { count: 'exact', head: true })
-    .eq('session_id', session_id)
-    .eq('status', 'absent')
+  const [absentResult, rosterResult] = await Promise.all([
+    supabaseAdmin.from('session_players').select('*', { count: 'exact', head: true }).eq('session_id', session_id).eq('status', 'absent'),
+    supabaseAdmin.from('session_players').select('*', { count: 'exact', head: true }).eq('session_id', session_id).eq('status', 'roster'),
+  ])
 
-  const { count: rosterCount } = await supabaseAdmin
-    .from('session_players')
-    .select('*', { count: 'exact', head: true })
-    .eq('session_id', session_id)
-    .eq('status', 'roster')
+  const absentCount = absentResult.count ?? 0
+  const rosterCount = rosterResult.count ?? 0
 
-  const openSlots = (absentCount ?? 0) - (rosterCount ?? 0)
+  // Slots remaining after A cancels = (absent - 1) - roster
+  // If >= 0: A can come back directly (there's still an unfilled absence slot)
+  // If < 0: all slots are taken by substitutes — A joins waitlist instead
+  const remainingSlots = (absentCount - 1) - rosterCount
+  const newStatus: 'back' | 'waitlist' = remainingSlots >= 0 ? 'back' : 'waitlist'
 
-  // Always delete the absent record — the regular player is back
-  await supabaseAdmin
-    .from('session_players')
-    .delete()
-    .eq('session_id', session_id)
-    .eq('player_id', player.id)
-
-  let newStatus: 'back' | 'waitlist' = 'back'
-
-  if (openSlots <= 0) {
-    // Slot was filled by a substitute — bump the most recently added roster player back to waitlist
-    const { data: lastRoster } = await supabaseAdmin
+  if (newStatus === 'back') {
+    // Room available — delete absent record, A returns as regular
+    await supabaseAdmin
       .from('session_players')
-      .select('id')
+      .delete()
       .eq('session_id', session_id)
-      .eq('status', 'roster')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
-
-    if (lastRoster) {
-      await supabaseAdmin
-        .from('session_players')
-        .update({ status: 'waitlist' })
-        .eq('id', lastRoster.id)
-    }
+      .eq('player_id', player.id)
+  } else {
+    // No room — B keeps their spot, A joins waitlist
+    await supabaseAdmin
+      .from('session_players')
+      .update({ status: 'waitlist' })
+      .eq('session_id', session_id)
+      .eq('player_id', player.id)
   }
 
   const groups = await getGroupIds()
