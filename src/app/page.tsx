@@ -33,7 +33,7 @@ export default function SessionPage() {
 
   const fetchSession = useCallback(async () => {
     try {
-      const res = await fetch(`/api/session/upcoming?t=${Date.now()}`, { cache: 'no-store' })
+      const res = await fetch('/api/session/upcoming', { method: 'POST', cache: 'no-store' })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.error ?? `HTTP ${res.status}`)

@@ -5,7 +5,7 @@ import type { SessionStatus, PlayerWithStatus, SessionPlayerWithPlayer } from '@
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function POST() {
   const { dateStr, dayOfWeek: dayOfWeekStr } = getNextSessionDate()
 
   // Find or create session

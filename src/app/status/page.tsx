@@ -23,7 +23,7 @@ export default function StatusPage() {
 
   const fetchSession = useCallback(async () => {
     try {
-      const res = await fetch('/api/session/upcoming', { cache: 'no-store' })
+      const res = await fetch('/api/session/upcoming', { method: 'POST', cache: 'no-store' })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       if (data.error) throw new Error(data.error)
