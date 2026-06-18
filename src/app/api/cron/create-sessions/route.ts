@@ -23,31 +23,34 @@ export async function GET(req: NextRequest) {
   const created: string[] = []
   const skipped: string[] = []
 
+  const groupIds = await getGroupIds()
+
   for (const { dateStr, dayOfWeek } of dates) {
     const { data: existing } = await supabaseAdmin
       .from('sessions')
-      .select('id')
+      .select('*')
       .eq('date', dateStr)
       .single()
 
+    let session = existing
+
     if (existing) {
       skipped.push(dateStr)
-      continue
+    } else {
+      const { data: inserted, error } = await supabaseAdmin
+        .from('sessions')
+        .insert({ date: dateStr, day_of_week: dayOfWeek, ...SESSION_DEFAULTS })
+        .select()
+        .single()
+
+      if (error || !inserted) {
+        return NextResponse.json({ error: error?.message ?? 'Insert failed' }, { status: 500 })
+      }
+
+      session = inserted
+      created.push(dateStr)
     }
 
-    const { data: session, error } = await supabaseAdmin
-      .from('sessions')
-      .insert({ date: dateStr, day_of_week: dayOfWeek, ...SESSION_DEFAULTS })
-      .select()
-      .single()
-
-    if (error || !session) {
-      return NextResponse.json({ error: error?.message ?? 'Insert failed' }, { status: 500 })
-    }
-
-    created.push(dateStr)
-
-    const groupIds = await getGroupIds()
     if (groupIds.length > 0) {
       await notifyGroups(groupIds, buildNewSessionNotification(session))
     }
