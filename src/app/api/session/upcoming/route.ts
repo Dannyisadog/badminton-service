@@ -6,33 +6,12 @@ import type { SessionStatus, PlayerWithStatus, SessionPlayerWithPlayer } from '@
 export const dynamic = 'force-dynamic'
 
 export async function POST() {
-  const { dateStr, dayOfWeek: dayOfWeekStr } = getNextSessionDate()
+  const { dateStr } = getNextSessionDate()
 
-  // Find or create session
-  let session = await findSession(dateStr)
+  const session = await findSession(dateStr)
 
   if (!session) {
-    const { data, error } = await supabaseAdmin
-      .from('sessions')
-      .insert({
-        date: dateStr,
-        day_of_week: dayOfWeekStr,
-        capacity: 24,
-        regular_count: 24,
-        start_time: '19:00:00',
-        end_time: '21:00:00',
-        location: 'https://maps.app.goo.gl/uvrTdwJoDpj9xkev8',
-      })
-      .select()
-      .single()
-
-    if (error || !data) {
-      return NextResponse.json(
-        { error: error?.message ?? 'Failed to create session' },
-        { status: 500 }
-      )
-    }
-    session = data
+    return NextResponse.json({ error: 'No upcoming session found' }, { status: 404 })
   }
 
   // Fetch session players with joined player data

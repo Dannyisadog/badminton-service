@@ -1,5 +1,6 @@
 {
   "crons": [
+    { "path": "/api/cron/create-sessions", "schedule": "0 16 * * 6" },
     { "path": "/api/cron/weekly-reminder", "schedule": "0 7 * * 1,5" },
     { "path": "/api/cron/pregame-reminder", "schedule": "0 6 * * 1,5" }
   ]
