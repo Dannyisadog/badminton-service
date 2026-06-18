@@ -24,8 +24,9 @@ export async function GET(req: NextRequest) {
   const skipped: string[] = []
 
   const groupIds = await getGroupIds()
+  let notifySession = null
 
-  for (const { dateStr, dayOfWeek } of dates) {
+  for (const { dateStr, dayOfWeek, offset } of dates) {
     const { data: existing } = await supabaseAdmin
       .from('sessions')
       .select('*')
@@ -51,16 +52,21 @@ export async function GET(req: NextRequest) {
       created.push(dateStr)
     }
 
-    if (groupIds.length > 0) {
-      await notifyGroups(groupIds, buildNewSessionNotification(session))
+    // Only notify for the closest upcoming session; skip today (offset=0, game already ended)
+    if (!notifySession && offset > 0) {
+      notifySession = session
     }
+  }
+
+  if (notifySession && groupIds.length > 0) {
+    await notifyGroups(groupIds, buildNewSessionNotification(notifySession))
   }
 
   return NextResponse.json({ success: true, created, skipped })
 }
 
-// Returns the upcoming Monday and Friday dates (0–6 days from today, Taiwan time)
-function getUpcomingGameDates(): { dateStr: string; dayOfWeek: 'Mon' | 'Fri' }[] {
+// Returns the upcoming Monday and Friday dates sorted by closeness (Taiwan time)
+function getUpcomingGameDates(): { dateStr: string; dayOfWeek: 'Mon' | 'Fri'; offset: number }[] {
   const TZ_OFFSET_MS = 8 * 60 * 60 * 1000
   const twNow = Date.now() + TZ_OFFSET_MS
   const today = new Date(twNow).getUTCDay() // 0=Sun … 6=Sat
@@ -70,9 +76,11 @@ function getUpcomingGameDates(): { dateStr: string; dayOfWeek: 'Mon' | 'Fri' }[]
     [5, 'Fri'],
   ]
 
-  return targets.map(([target, dayOfWeek]) => {
-    const offset = (target - today + 7) % 7
-    const d = new Date(twNow + offset * 86400000)
-    return { dateStr: d.toISOString().slice(0, 10), dayOfWeek }
-  })
+  return targets
+    .map(([target, dayOfWeek]) => {
+      const offset = (target - today + 7) % 7
+      const d = new Date(twNow + offset * 86400000)
+      return { dateStr: d.toISOString().slice(0, 10), dayOfWeek, offset }
+    })
+    .sort((a, b) => a.offset - b.offset)
 }
