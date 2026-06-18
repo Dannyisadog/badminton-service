@@ -19,54 +19,42 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const dates = getUpcomingGameDates()
-  const created: string[] = []
-  const skipped: string[] = []
+  const { dateStr, dayOfWeek } = getNextGameDate()
 
-  const groupIds = await getGroupIds()
-  let notifySession = null
+  const { data: existing } = await supabaseAdmin
+    .from('sessions')
+    .select('*')
+    .eq('date', dateStr)
+    .single()
 
-  for (const { dateStr, dayOfWeek, offset } of dates) {
-    const { data: existing } = await supabaseAdmin
+  let session = existing
+
+  if (existing) {
+    // Session already exists — still notify
+  } else {
+    const { data: inserted, error } = await supabaseAdmin
       .from('sessions')
-      .select('*')
-      .eq('date', dateStr)
+      .insert({ date: dateStr, day_of_week: dayOfWeek, ...SESSION_DEFAULTS })
+      .select()
       .single()
 
-    let session = existing
-
-    if (existing) {
-      skipped.push(dateStr)
-    } else {
-      const { data: inserted, error } = await supabaseAdmin
-        .from('sessions')
-        .insert({ date: dateStr, day_of_week: dayOfWeek, ...SESSION_DEFAULTS })
-        .select()
-        .single()
-
-      if (error || !inserted) {
-        return NextResponse.json({ error: error?.message ?? 'Insert failed' }, { status: 500 })
-      }
-
-      session = inserted
-      created.push(dateStr)
+    if (error || !inserted) {
+      return NextResponse.json({ error: error?.message ?? 'Insert failed' }, { status: 500 })
     }
 
-    // Only notify for the closest upcoming session; skip today (offset=0, game already ended)
-    if (!notifySession && offset > 0) {
-      notifySession = session
-    }
+    session = inserted
   }
 
-  if (notifySession && groupIds.length > 0) {
-    await notifyGroups(groupIds, buildNewSessionNotification(notifySession))
+  const groupIds = await getGroupIds()
+  if (groupIds.length > 0) {
+    await notifyGroups(groupIds, buildNewSessionNotification(session))
   }
 
-  return NextResponse.json({ success: true, created, skipped })
+  return NextResponse.json({ success: true, date: dateStr, existed: !!existing })
 }
 
-// Returns the upcoming Monday and Friday dates sorted by closeness (Taiwan time)
-function getUpcomingGameDates(): { dateStr: string; dayOfWeek: 'Mon' | 'Fri'; offset: number }[] {
+// Returns the next upcoming game day (Mon or Fri) that hasn't started yet, Taiwan time
+function getNextGameDate(): { dateStr: string; dayOfWeek: 'Mon' | 'Fri' } {
   const TZ_OFFSET_MS = 8 * 60 * 60 * 1000
   const twNow = Date.now() + TZ_OFFSET_MS
   const today = new Date(twNow).getUTCDay() // 0=Sun … 6=Sat
@@ -76,11 +64,13 @@ function getUpcomingGameDates(): { dateStr: string; dayOfWeek: 'Mon' | 'Fri'; of
     [5, 'Fri'],
   ]
 
-  return targets
+  const next = targets
     .map(([target, dayOfWeek]) => {
-      const offset = (target - today + 7) % 7
-      const d = new Date(twNow + offset * 86400000)
-      return { dateStr: d.toISOString().slice(0, 10), dayOfWeek, offset }
+      let offset = (target - today + 7) % 7
+      if (offset === 0) offset = 7 // skip today, take next week
+      return { offset, dayOfWeek, dateStr: new Date(twNow + offset * 86400000).toISOString().slice(0, 10) }
     })
-    .sort((a, b) => a.offset - b.offset)
+    .sort((a, b) => a.offset - b.offset)[0]
+
+  return { dateStr: next.dateStr, dayOfWeek: next.dayOfWeek }
 }
