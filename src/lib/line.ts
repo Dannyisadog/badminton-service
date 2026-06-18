@@ -69,7 +69,6 @@ export function buildNewSessionNotification(session: Session): string {
     ``,
     `📅 ${dateStr}`,
     `🕗 ${session.start_time.slice(0, 5)}${session.end_time ? ` ~ ${session.end_time.slice(0, 5)}` : ''}`,
-    `📍 ${session.location}`,
     ``,
     `請至連結登記請假、候補或報名代打`,
   ])
