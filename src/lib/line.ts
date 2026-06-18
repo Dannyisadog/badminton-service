@@ -59,11 +59,9 @@ function withLink(lines: string[]): string {
 }
 
 export function buildNewSessionNotification(session: Session): string {
-  const dateStr = new Date(session.date + 'T00:00:00').toLocaleDateString('zh-TW', {
-    month: 'numeric',
-    day: 'numeric',
-    weekday: 'short',
-  })
+  const [, m, d] = session.date.split('-').map(Number)
+  const dayLabel = session.day_of_week === 'Mon' ? '週一' : '週五'
+  const dateStr = `${m}月${d}日（${dayLabel}）`
   return withLink([
     `🏸 場次開放登記！`,
     ``,
