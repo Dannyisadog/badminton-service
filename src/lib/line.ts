@@ -1,5 +1,5 @@
 import crypto from 'crypto'
-import type { SessionStatus } from '@/types'
+import type { Session, SessionStatus } from '@/types'
 
 const LINE_API = 'https://api.line.me/v2/bot'
 
@@ -56,6 +56,23 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://badminton-service.dan
 
 function withLink(lines: string[]): string {
   return [...lines, ``, APP_URL].join('\n')
+}
+
+export function buildNewSessionNotification(session: Session): string {
+  const dateStr = new Date(session.date + 'T00:00:00').toLocaleDateString('zh-TW', {
+    month: 'numeric',
+    day: 'numeric',
+    weekday: 'short',
+  })
+  return withLink([
+    `🏸 場次開放登記！`,
+    ``,
+    `📅 ${dateStr}`,
+    `🕗 ${session.start_time.slice(0, 5)}${session.end_time ? ` ~ ${session.end_time.slice(0, 5)}` : ''}`,
+    `📍 ${session.location}`,
+    ``,
+    `請至連結登記請假、候補或報名代打`,
+  ])
 }
 
 export function buildSessionSummary(status: SessionStatus): string {

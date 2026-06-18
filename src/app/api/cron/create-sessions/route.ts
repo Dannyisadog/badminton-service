@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { verifyCronSecret } from '@/lib/auth'
+import { buildNewSessionNotification, notifyGroups } from '@/lib/line'
+import { getGroupIds } from '@/lib/groups'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,17 +35,22 @@ export async function GET(req: NextRequest) {
       continue
     }
 
-    const { error } = await supabaseAdmin.from('sessions').insert({
-      date: dateStr,
-      day_of_week: dayOfWeek,
-      ...SESSION_DEFAULTS,
-    })
+    const { data: session, error } = await supabaseAdmin
+      .from('sessions')
+      .insert({ date: dateStr, day_of_week: dayOfWeek, ...SESSION_DEFAULTS })
+      .select()
+      .single()
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error || !session) {
+      return NextResponse.json({ error: error?.message ?? 'Insert failed' }, { status: 500 })
     }
 
     created.push(dateStr)
+
+    const groupIds = await getGroupIds()
+    if (groupIds.length > 0) {
+      await notifyGroups(groupIds, buildNewSessionNotification(session))
+    }
   }
 
   return NextResponse.json({ success: true, created, skipped })
